@@ -75,7 +75,7 @@ func (pa PublicAddress) ToKey(netPrefix byte) (*PublicKey, error) {
 }
 
 // StealthAddress Returns P, R
-// P = H(r* r * PubView || Index)G + Pubspend = (H(r * PubView || Index) + privSpend)G
+// P = H(r* PubView || Index)G + Pubspend = (H(r * PubView || Index) + privSpend)G
 func (k *PublicKey) StealthAddress(r ristretto.Scalar, index uint32) *StealthAddress {
 
 	var rA ristretto.Point
