@@ -4,58 +4,47 @@ import (
 	"dusk-wallet/key"
 	"encoding/binary"
 
+	"dusk-wallet/rangeproof"
+
 	ristretto "github.com/bwesterb/go-ristretto"
-	"gitlab.dusk.network/dusk-core/dusk-go/pkg/crypto/rangeproof"
 )
 
 type Output struct {
+	amount ristretto.Scalar
+	mask   ristretto.Scalar
+
 	DestKey         ristretto.Point
 	EncryptedAmount ristretto.Scalar
+	Index           uint32
 	EncryptedMask   ristretto.Scalar
 	Commitment      ristretto.Point
 	RangeProof      rangeproof.Proof
 }
 
-func newOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) *Output {
-
-	output := &Output{}
+func newOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (*Output, error) {
+	output := &Output{
+		amount: amount,
+	}
 
 	stealthAddr := pubKey.StealthAddress(r, index)
 	output.DestKey = stealthAddr.P
 
-	mask, commitment := commit(amount)
-	output.Commitment = commitment
+	proof, err := rangeproof.Prove([]ristretto.Scalar{amount}, false)
+	if err != nil {
+		return nil, err
+	}
+	output.RangeProof = proof
 
-	output.EncryptedAmount = encryptAmount(amount, r, index, *pubKey.PubView)
+	output.Commitment = proof.V[0].Value
+	output.mask = proof.V[0].BlindingFactor
 
-	output.EncryptedMask = encryptMask(mask, r, index, *pubKey.PubView)
+	//XXX: When serialising the rangeproof, we miss out the commitment since it will
+	// in the Output
 
-	// TODO: Add rangeproof for output
-	// XXX: We need the rangeproof commitment to match with the commitment in the output.
-	// Modify rangeproof to return commitment, mask and proof
-	// Then do rangeproof first
-	// rangeproof.Prove()
+	output.EncryptedAmount = encryptAmount(output.amount, r, index, *pubKey.PubView)
+	output.EncryptedMask = encryptMask(output.mask, r, index, *pubKey.PubView)
 
-	return output
-}
-
-// Commitment = amount * G + mask * H
-func commit(amount ristretto.Scalar) (ristretto.Scalar, ristretto.Point) {
-	var commitment ristretto.Point
-	commitment.ScalarMultBase(&amount)
-
-	var H ristretto.Point
-	H.Derive([]byte("blind"))
-
-	var mask ristretto.Scalar
-	mask.Rand()
-
-	H.ScalarMult(&H, &mask)
-
-	// commitment = amount * G + mask * H
-	commitment.Add(&commitment, &H)
-
-	return mask, commitment
+	return output, nil
 }
 
 // encAmount = amount + H(H(H(r*PubViewKey || index)))
