@@ -82,8 +82,9 @@ func (k *PublicKey) StealthAddress(r ristretto.Scalar, index uint32) *StealthAdd
 	rA.ScalarMult(k.PubView.point(), &r)
 
 	// f = H(rA || Index)
+	rAIndex := concatSlice(rA.Bytes(), uint32ToBytes(index))
 	var f ristretto.Scalar
-	f.Derive(rA.Bytes())
+	f.Derive(rAIndex)
 
 	// F = fG
 	var F ristretto.Point
@@ -142,6 +143,14 @@ func (k *PublicKey) PublicAddress(netPrefix byte) (*PublicAddress, error) {
 
 func uint32ToBytes(x uint32) []byte {
 	a := make([]byte, 4)
-	binary.LittleEndian.PutUint32(a, x)
+	binary.BigEndian.PutUint32(a, x)
 	return a
+}
+
+func concatSlice(slices ...[]byte) []byte {
+	var res []byte
+	for _, s := range slices {
+		res = append(res, s...)
+	}
+	return res
 }

@@ -36,7 +36,7 @@ func (k Key) PublicKey() *PublicKey {
 // DidReceiveTx takes P the stealthAddress/ one time pubkey
 // and the tx pubkey R
 // checks whether the tx was intended for the key assosciated
-func (k *Key) DidReceiveTx(R ristretto.Point, stealth StealthAddress) (*ristretto.Scalar, bool) {
+func (k *Key) DidReceiveTx(R ristretto.Point, stealth StealthAddress, index uint32) (*ristretto.Scalar, bool) {
 
 	pubKey := k.PublicKey()
 
@@ -44,7 +44,8 @@ func (k *Key) DidReceiveTx(R ristretto.Point, stealth StealthAddress) (*ristrett
 	Dprime.ScalarMult(&R, k.privKey.privView.scalar())
 
 	var fprime ristretto.Scalar
-	fprime.Derive(Dprime.Bytes())
+	DprimeIndex := concatSlice(Dprime.Bytes(), uint32ToBytes(index))
+	fprime.Derive(DprimeIndex)
 
 	var Fprime ristretto.Point
 	Fprime.ScalarMultBase(&fprime)
