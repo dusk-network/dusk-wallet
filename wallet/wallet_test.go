@@ -47,6 +47,7 @@ func TestWallet(t *testing.T) {
 		assert.True(t, ok)
 		assert.Nil(t, err)
 	}
+
 }
 
 func generateDecoys(numMixins int, numKeysPerUser int) []mlsag.PubKeys {
@@ -70,7 +71,7 @@ func fetchInputs(netPrefix byte, totalAmount int64, key *key.Key) ([]*transactio
 	// one time pubkey
 
 	var inputs []*transactions.Input
-	numInputs := 5
+	numInputs := 3
 
 	addresses, R := generateOutputAddress(key, netPrefix, numInputs)
 

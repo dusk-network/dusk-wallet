@@ -25,7 +25,7 @@ type Wallet struct {
 
 func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) (*Wallet, error) {
 
-	// Random Key
+	// random seed
 	seed := make([]byte, 64)
 	_, err := rand.Read(seed)
 	if err != nil {
