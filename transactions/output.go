@@ -21,7 +21,7 @@ type Output struct {
 	RangeProof      rangeproof.Proof
 }
 
-func newOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (*Output, error) {
+func NewOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (*Output, error) {
 	output := &Output{
 		amount: amount,
 	}

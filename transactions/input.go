@@ -22,7 +22,7 @@ type Input struct {
 	Sig   *mlsag.Signature
 }
 
-func newInput(txid []byte, commitment ristretto.Point, amount, mask ristretto.Scalar, pubkey ristretto.Point, privKey ristretto.Scalar) *Input {
+func NewInput(txid []byte, commitment ristretto.Point, amount, mask ristretto.Scalar, pubkey ristretto.Point, privKey ristretto.Scalar) *Input {
 	return &Input{
 		TxID:       txid,
 		Commitment: commitment,

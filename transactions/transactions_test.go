@@ -94,11 +94,11 @@ func generateInput(amount ristretto.Scalar) *Input {
 	var mask ristretto.Scalar
 	mask.Rand()
 
-	comm := commitAmount(amount, mask)
+	comm := CommitAmount(amount, mask)
 
 	pubKey, privKey := generateKeyPair()
 
-	input := newInput(txid, comm, amount, mask, pubKey, privKey)
+	input := NewInput(txid, comm, amount, mask, pubKey, privKey)
 	return input
 }
 

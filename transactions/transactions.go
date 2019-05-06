@@ -12,6 +12,9 @@ import (
 const maxInputs = 2000
 const maxOutputs = 32
 
+// FetchDecoys returns a slice of decoy pubKey vectors
+type FetchDecoys func(numMixins int, numKeysPerUser int) []mlsag.PubKeys
+
 type StealthTx struct {
 	r ristretto.Scalar
 	R ristretto.Point
@@ -22,11 +25,15 @@ type StealthTx struct {
 
 	index     uint32
 	netPrefix byte
+
+	TotalSent ristretto.Scalar
 }
 
 func New(netPrefix byte, fee int64) (*StealthTx, error) {
 
 	tx := &StealthTx{}
+
+	tx.TotalSent.SetZero()
 
 	// Index for subaddresses
 	tx.index = 1
@@ -78,7 +85,7 @@ func (s *StealthTx) CalcCommToZero() error {
 		if index == len(s.Inputs)-1 {
 			pseudoMask.Sub(&aggOutputBlinders, &aggInputBlinders)
 		}
-		pseudoCommitment := commitAmount(input.amount, pseudoMask)
+		pseudoCommitment := CommitAmount(input.amount, pseudoMask)
 
 		input.pseudoMask.Set(&pseudoMask)
 		input.PseudoCommitment.Set(&pseudoCommitment)
@@ -122,7 +129,7 @@ func (s *StealthTx) AddOutput(pubAddr key.PublicAddress, amount ristretto.Scalar
 		return err
 	}
 
-	output, err := newOutput(s.r, amount, s.index, *pubKey)
+	output, err := NewOutput(s.r, amount, s.index, *pubKey)
 	if err != nil {
 		return err
 	}
@@ -130,10 +137,10 @@ func (s *StealthTx) AddOutput(pubAddr key.PublicAddress, amount ristretto.Scalar
 
 	s.index = s.index + 1
 
+	s.TotalSent.Add(&s.TotalSent, &amount)
+
 	return nil
 }
-
-type FetchDecoys func(numMixins int, numKeysPerUser int) []mlsag.PubKeys
 
 func (s *StealthTx) AddDecoys(numMixins int, f FetchDecoys) error {
 
@@ -145,7 +152,7 @@ func (s *StealthTx) AddDecoys(numMixins int, f FetchDecoys) error {
 	return nil
 }
 
-func commitAmount(amount, mask ristretto.Scalar) ristretto.Point {
+func CommitAmount(amount, mask ristretto.Scalar) ristretto.Point {
 
 	var blindPoint ristretto.Point
 	blindPoint.Derive([]byte("blindPoint"))
