@@ -2,6 +2,7 @@ package mlsag
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	ristretto "github.com/bwesterb/go-ristretto"
@@ -120,6 +121,11 @@ func (proof *Proof) Prove() (*Signature, error) {
 }
 
 func (sig *Signature) Verify() (bool, error) {
+
+	if len(sig.PubKeys) == 0 || len(sig.r) == 0 || len(sig.KeyImages) == 0 {
+		return false, errors.New("cannot have zero length for responses, pubkeys or key images")
+	}
+
 	numUsers := len(sig.r)
 	index := 0
 
