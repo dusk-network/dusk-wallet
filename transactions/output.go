@@ -13,7 +13,7 @@ type Output struct {
 	amount ristretto.Scalar
 	mask   ristretto.Scalar
 
-	DestKey         ristretto.Point
+	DestKey         key.StealthAddress
 	EncryptedAmount ristretto.Scalar
 	Index           uint32
 	EncryptedMask   ristretto.Scalar
@@ -26,8 +26,10 @@ func NewOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (
 		amount: amount,
 	}
 
+	output.Index = index
+
 	stealthAddr := pubKey.StealthAddress(r, index)
-	output.DestKey = stealthAddr.P
+	output.DestKey = *stealthAddr
 
 	proof, err := rangeproof.Prove([]ristretto.Scalar{amount}, false)
 	if err != nil {
@@ -39,7 +41,7 @@ func NewOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (
 	output.mask = proof.V[0].BlindingFactor
 
 	//XXX: When serialising the rangeproof, we miss out the commitment since it will
-	// in the Output
+	// be in the Output
 
 	output.EncryptedAmount = encryptAmount(output.amount, r, index, *pubKey.PubView)
 	output.EncryptedMask = encryptMask(output.mask, r, index, *pubKey.PubView)

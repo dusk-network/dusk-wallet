@@ -36,7 +36,7 @@ func New(netPrefix byte, fee int64) (*StealthTx, error) {
 	tx.TotalSent.SetZero()
 
 	// Index for subaddresses
-	tx.index = 1
+	tx.index = 0
 
 	// prefix to signify testnet/
 	tx.netPrefix = netPrefix
@@ -46,9 +46,7 @@ func New(netPrefix byte, fee int64) (*StealthTx, error) {
 	r.Rand()
 	tx.r = r
 
-	var R ristretto.Point
-	R.ScalarMultBase(&r)
-	tx.R = R
+	tx.R.ScalarMultBase(&r)
 
 	if fee < 0 {
 		return nil, errors.New("fee cannot be negative")
