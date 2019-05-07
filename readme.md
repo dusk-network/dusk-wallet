@@ -10,7 +10,7 @@
 
 - Assume `G` to be the standard basepoint and `H` to be some other generator such that we do not know the discrete log, with respects to `G`.
 
-- Pedersen Commitment is a point such that P = aG + bH
+- Pedersen Commitment is a point such that C = aH + bG
 
 - HashToGroup; given arbitrary data, map it to some element in that group.
 
