@@ -63,7 +63,7 @@ func (pa PublicAddress) ToKey(netPrefix byte) (*PublicKey, error) {
 		return nil, err
 	}
 
-	pubSpend, err := pubSpendFromBytes(publicViewBytes)
+	pubSpend, err := pubSpendFromBytes(publicSpendBytes)
 	if err != nil {
 		return nil, err
 	}
