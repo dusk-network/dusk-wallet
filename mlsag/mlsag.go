@@ -2,8 +2,10 @@ package mlsag
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )
@@ -16,12 +18,162 @@ type Signature struct {
 	Msg       []byte
 }
 
-func (proof *Proof) Prove() (*Signature, error) {
-	// Shuffle the PubKeys and update the
-	// 	index for our corresponding key
+func (s *Signature) Encode(w io.Writer) error {
+	err := binary.Write(w, binary.BigEndian, s.c.Bytes())
+	if err != nil {
+		return err
+	}
+
+	// lenR is the number of response vectors == num users = num pubkey vectors
+	lenR := uint32(len(s.r))
+	err = binary.Write(w, binary.BigEndian, lenR)
+	if err != nil {
+		return err
+	}
+
+	if lenR <= 0 {
+		return nil
+	}
+
+	// numResponses is the number of responses per user  == num pubkeys
+	numResponses := uint32(s.r[0].Len())
+	err = binary.Write(w, binary.BigEndian, numResponses)
+	if err != nil {
+		return err
+	}
+
+	numKeyImages := uint32(len(s.KeyImages))
+	err = binary.Write(w, binary.BigEndian, numKeyImages)
+	if err != nil {
+		return err
+	}
+
+	// Encode the responses
+	for i := range s.r {
+		err = s.r[i].Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Encode the pubkeys
+	for i := range s.PubKeys {
+		err = s.PubKeys[i].Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Encode the key images
+	for i := range s.KeyImages {
+		err = binary.Write(w, binary.BigEndian, s.KeyImages[i].Bytes())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Signature) Decode(r io.Reader) error {
+
+	if s == nil {
+		return errors.New("struct is nil")
+	}
+
+	err := readerToScalar(r, &s.c)
+	if err != nil {
+		return err
+	}
+
+	var lenR, numResponses, numKeyImages uint32
+	err = binary.Read(r, binary.BigEndian, &lenR)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(r, binary.BigEndian, &numResponses)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(r, binary.BigEndian, &numKeyImages)
+	if err != nil {
+		return err
+	}
+
+	// Decode the responses
+	s.r = make([]Responses, lenR)
+	for i := uint32(0); i < lenR; i++ {
+		fmt.Println("dec", i)
+		err = s.r[i].Decode(r, numResponses)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Decode pubkeys
+	s.PubKeys = make([]PubKeys, lenR)
+	for i := uint32(0); i < lenR; i++ {
+		err = s.PubKeys[i].Decode(r, numResponses)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Decode key images
+	s.KeyImages = make([]ristretto.Point, numKeyImages)
+	for i := uint32(0); i < numKeyImages; i++ {
+		err = readerToPoint(r, &s.KeyImages[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s Signature) Equals(other Signature) bool {
+	ok := s.c.Equals(&other.c)
+	if !ok {
+		return ok
+	}
+
+	fmt.Println(1)
+
+	for i := range s.r {
+		ok = s.r[i].Equals(other.r[i])
+		if !ok {
+			return ok
+		}
+	}
+
+	fmt.Println(2)
+	for i := range s.PubKeys {
+		ok = s.PubKeys[i].Equals(other.PubKeys[i])
+		if !ok {
+			return ok
+		}
+	}
+	fmt.Println(3)
+
+	for i := range s.KeyImages {
+		ok = s.KeyImages[i].Equals(&other.KeyImages[i])
+		if !ok {
+			return ok
+		}
+	}
+	fmt.Println(4)
+
+	return true
+}
+
+func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
+
+	proof.mixSignerPubKey()
+
+	// Shuffle the PubKeys and update the index for our corresponding key
 	err := proof.shuffleSet()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	keyImages := proof.calculateKeyImages()
@@ -50,18 +202,24 @@ func (proof *Proof) Prove() (*Signature, error) {
 		P.ScalarMultBase(&nonce)
 		_, err = buf.Write(P.Bytes())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+	}
+
+	for i := 0; i < signersPubKeys.Len(); i++ {
+
+		nonce := nonces[i]
 
 		// P = nonce * H(K)
-		var hK ristretto.Point
+		var P, hK ristretto.Point
 		hK.Derive(signersPubKeys.keys[i].Bytes())
 		P.ScalarMult(&hK, &nonce)
 		_, err = buf.Write(P.Bytes())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
+
 	var CjPlusOne ristretto.Scalar
 	CjPlusOne.Derive(buf.Bytes())
 
@@ -84,7 +242,7 @@ func (proof *Proof) Prove() (*Signature, error) {
 
 		c, err := generateChallenge(proof.msg, fakeResponses, keyImages, decoyPubKeys, prevChallenge)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		challenges[i].Set(&c)
@@ -117,10 +275,10 @@ func (proof *Proof) Prove() (*Signature, error) {
 		Msg:       proof.msg,
 	}
 
-	return sig, nil
+	return sig, keyImages, nil
 }
 
-func (sig *Signature) Verify() (bool, error) {
+func (sig *Signature) Verify(keyImages []ristretto.Point) (bool, error) {
 
 	if len(sig.PubKeys) == 0 || len(sig.r) == 0 || len(sig.KeyImages) == 0 {
 		return false, errors.New("cannot have zero length for responses, pubkeys or key images")
@@ -131,7 +289,6 @@ func (sig *Signature) Verify() (bool, error) {
 
 	var prevChallenge = sig.c
 
-	keyImages := sig.KeyImages
 	for k := index + 1; k != (index)%numUsers; k = (k + 1) % numUsers {
 		i := k % numUsers
 		prevIndex := (i - 1) % numUsers
@@ -213,7 +370,7 @@ func generateChallenge(
 		return ristretto.Scalar{}, err
 	}
 
-	for i := 0; i < len(keyImages); i++ {
+	for i := 0; i < pubKeys.Len(); i++ {
 
 		r := respsonses[i]
 
@@ -227,7 +384,13 @@ func generateChallenge(
 			return ristretto.Scalar{}, err
 		}
 
+	}
+
+	for i := 0; i < len(keyImages); i++ {
+		r := respsonses[i]
+
 		// P = r * H(K) + c * Ki
+		var P, cK ristretto.Point
 		var hK ristretto.Point
 		hK.Derive(pubKeys.keys[i].Bytes())
 		P.ScalarMult(&hK, &r)
@@ -252,14 +415,45 @@ func (proof *Proof) calculateKeyImages() []ristretto.Point {
 	pubKeys := proof.pubKeysMatrix[proof.index]
 
 	for i := 0; i < len(privKeys); i++ {
-		var point ristretto.Point
-		point.Set(&pubKeys.keys[i])
+		var keyImage ristretto.Point
+		keyImage.Set(&pubKeys.keys[i])
 		// P = H(xG)
-		point.Derive(point.Bytes())
+		keyImage.Derive(keyImage.Bytes())
 		// P = xH(P)
-		point.ScalarMult(&point, &privKeys[i])
+		keyImage.ScalarMult(&keyImage, &privKeys[i])
 
-		keyImages = append(keyImages, point)
+		keyImages = append(keyImages, keyImage)
 	}
 	return keyImages
+}
+
+func isNumInList(x int, numList []int) bool {
+	for _, b := range numList {
+		if b == x {
+			return true
+		}
+	}
+	return false
+}
+
+func readerToPoint(r io.Reader, p *ristretto.Point) error {
+	var x [32]byte
+	err := binary.Read(r, binary.BigEndian, &x)
+	if err != nil {
+		return err
+	}
+	ok := p.SetBytes(&x)
+	if !ok {
+		return errors.New("point not encodable")
+	}
+	return nil
+}
+func readerToScalar(r io.Reader, s *ristretto.Scalar) error {
+	var x [32]byte
+	err := binary.Read(r, binary.BigEndian, &x)
+	if err != nil {
+		return err
+	}
+	s.SetBytes(&x)
+	return nil
 }
