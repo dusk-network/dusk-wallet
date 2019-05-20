@@ -1,12 +1,14 @@
 package innerproduct
 
 import (
+	"bytes"
 	"testing"
+
+	"dusk-wallet/rangeproof/pedersen"
+	"dusk-wallet/rangeproof/vector"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
-	"dusk-wallet/rangeproof/pedersen"
-	"dusk-wallet/rangeproof/vector"
 )
 
 func TestProofCreation(t *testing.T) {
@@ -21,7 +23,18 @@ func TestProofCreation(t *testing.T) {
 		assert.Equal(t, nil, err)
 
 		ok := proof.Verify(G, H, proof.L, proof.R, Hpf, Q, P, int(n))
-		assert.Equal(t, true, ok)
+		assert.True(t, ok)
+
+		buf := &bytes.Buffer{}
+
+		err = proof.Encode(buf)
+		assert.Equal(t, nil, err)
+
+		var decodedProof Proof
+		decodedProof.Decode(buf)
+		assert.Equal(t, nil, err)
+		ok = proof.Equals(decodedProof)
+		assert.True(t, ok)
 
 		n = n * 2
 	}
