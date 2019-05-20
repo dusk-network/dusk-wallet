@@ -41,7 +41,7 @@ func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) 
 }
 
 func (w *Wallet) NewStealthTx(fee int64) (*transactions.StealthTx, error) {
-	tx, err := transactions.New(w.netPrefix, fee)
+	tx, err := transactions.NewStealth(w.netPrefix, fee)
 	if err != nil {
 		return nil, err
 	}
@@ -95,15 +95,18 @@ func (w *Wallet) Sign(tx *transactions.StealthTx) error {
 	return tx.CalcCommToZero()
 }
 
-// Saves the private key information to a json file
+// Save saves the private key information to a json file
 func (w *Wallet) Save() error {
-	// XXX: Take a password to encrypt the file, filename can be hash of public key
+	// XXX: Have a json file
+	// encrypt only the private keys with a password
+
+	//filename can be hash of first public key
 	// Ensures that files are not overwritten
 	return nil
 }
 
 func LoadWallet() (*Wallet, error) {
-	// XXX: Load wallet from encrypted file
-	// Will take a password from cli to un-encrypt.
+	// XXX: Load wallet from json file
+	// Will take a password from cli to un-encrypt the private keys
 	return nil, nil
 }

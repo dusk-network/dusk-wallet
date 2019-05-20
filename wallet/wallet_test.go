@@ -97,6 +97,7 @@ func TestReceivedTx(t *testing.T) {
 	}
 	assert.False(t, hasDuplicates(destKeys))
 }
+
 func generateDecoys(numMixins int, numKeysPerUser int) []mlsag.PubKeys {
 	var pubKeys []mlsag.PubKeys
 	for i := 0; i < numMixins; i++ {
