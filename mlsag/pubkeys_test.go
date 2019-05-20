@@ -22,5 +22,4 @@ func TestAddPubKey(t *testing.T) {
 
 		assert.True(t, keys.decoy)
 	}
-
 }
