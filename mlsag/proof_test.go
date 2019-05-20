@@ -26,21 +26,22 @@ func TestAddSecretKeys(t *testing.T) {
 	p.AddDecoy(decoy)
 	assert.Equal(t, 1, len(p.pubKeysMatrix))
 
-	realKey := generateSks(2)
-	p.AddSecret(realKey)
+	realKeys := generateSks(2)
+	for i := range realKeys {
+		p.AddSecret(realKeys[i])
+	}
+
+	p.mixSignerPubKey()
+
 	assert.Equal(t, 2, len(p.pubKeysMatrix))
 
 	// Check that the privKeys match the pubkeys
 	var firstPubKey, secondPubKey ristretto.Point
-	firstPubKey.ScalarMultBase(&realKey[0])
-	secondPubKey.ScalarMultBase(&realKey[1])
+	firstPubKey.ScalarMultBase(&realKeys[0])
+	secondPubKey.ScalarMultBase(&realKeys[1])
 
 	assert.True(t, p.pubKeysMatrix[1].keys[0] == firstPubKey)
 	assert.True(t, p.pubKeysMatrix[1].keys[1] == secondPubKey)
-}
-
-func TestShuffle(t *testing.T) {
-
 }
 
 func generateSks(n int) PrivKeys {

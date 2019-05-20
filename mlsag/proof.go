@@ -17,6 +17,9 @@ type Proof struct {
 	// in the matrix
 	privKeys PrivKeys
 
+	//Signer pubkeys
+	signerPubKeys PubKeys
+
 	// All pubKeys including the decoys
 	// There should exist an index j such that
 	// pubKeys[j][i] = privKeys[i] * G
@@ -42,22 +45,22 @@ func (p *Proof) AddDecoys(keys []PubKeys) {
 	}
 }
 
-func (p *Proof) AddSecret(pk PrivKeys) {
+func (proof *Proof) mixSignerPubKey() {
+	// Add signers pubkey to matrix
+	proof.signerPubKeys.decoy = false
+	proof.addPubKeys(proof.signerPubKeys)
+}
 
-	var pubKeys PubKeys
-	pubKeys.decoy = false
+func (p *Proof) AddSecret(privKey ristretto.Scalar) {
 
-	// Generate PubKeys for all privateKeys
-	var pubKey ristretto.Point
-	for i := 0; i < len(pk); i++ {
-		pubKey.ScalarMultBase(&pk[i])
-		pubKeys.AddPubKey(pubKey)
-	}
+	// Generate pubkey for given privkey
+	var rawPubKey ristretto.Point
+	rawPubKey.ScalarMultBase(&privKey)
 
-	// Add key vector to matrix
-	p.addPubKeys(pubKeys)
-	// Add privateKeys to proof
-	p.privKeys = pk
+	// Add pubkey to signers set of pubkeys
+	p.signerPubKeys.AddPubKey(rawPubKey)
+	// Add privkey to signers set of priv keys
+	p.privKeys.AddPrivateKey(privKey)
 }
 
 // shuffle all pubkeys and sets the index
