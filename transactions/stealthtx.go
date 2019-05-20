@@ -3,7 +3,10 @@ package transactions
 import (
 	"dusk-wallet/key"
 	"dusk-wallet/mlsag"
+	"encoding/binary"
 	"errors"
+	"fmt"
+	"io"
 	"math/big"
 
 	ristretto "github.com/bwesterb/go-ristretto"
@@ -29,7 +32,7 @@ type StealthTx struct {
 	TotalSent ristretto.Scalar
 }
 
-func New(netPrefix byte, fee int64) (*StealthTx, error) {
+func NewStealth(netPrefix byte, fee int64) (*StealthTx, error) {
 
 	tx := &StealthTx{}
 
@@ -148,6 +151,119 @@ func (s *StealthTx) AddDecoys(numMixins int, f FetchDecoys) error {
 		input.Proof.AddDecoys(decoys)
 	}
 	return nil
+}
+func (s *StealthTx) Encode(w io.Writer) error {
+
+	err := binary.Write(w, binary.BigEndian, s.Fee.Bytes())
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(w, binary.BigEndian, s.R.Bytes())
+	if err != nil {
+		return err
+	}
+
+	lenInput := uint32(len(s.Inputs))
+	err = binary.Write(w, binary.BigEndian, lenInput)
+	if err != nil {
+		return err
+	}
+	for i := range s.Inputs {
+		input := s.Inputs[i]
+		err = input.Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+
+	lenOutput := uint32(len(s.Outputs))
+	err = binary.Write(w, binary.BigEndian, lenOutput)
+	if err != nil {
+		return err
+	}
+	for i := range s.Outputs {
+		output := s.Outputs[i]
+		err = output.Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+func (s *StealthTx) Decode(r io.Reader) error {
+	fmt.Println(0)
+	err := readerToScalar(r, &s.Fee)
+	if err != nil {
+		return err
+	}
+	fmt.Println(1)
+	err = readerToPoint(r, &s.R)
+	if err != nil {
+		return err
+	}
+	fmt.Println(2)
+
+	var lenInput uint32
+	err = binary.Read(r, binary.BigEndian, &lenInput)
+	if err != nil {
+		return err
+	}
+	s.Inputs = make([]*Input, lenInput)
+	for i := uint32(0); i < lenInput; i++ {
+		s.Inputs[i] = &Input{}
+		err = s.Inputs[i].Decode(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	var lenOutput uint32
+	err = binary.Read(r, binary.BigEndian, &lenOutput)
+	if err != nil {
+		return err
+	}
+	s.Outputs = make([]*Output, lenOutput)
+	for i := uint32(0); i < lenOutput; i++ {
+		s.Outputs[i] = &Output{}
+		err = s.Outputs[i].Decode(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *StealthTx) Equals(other StealthTx) bool {
+
+	ok := s.R.Equals(&other.R)
+	if !ok {
+		return ok
+	}
+
+	if len(s.Inputs) != len(other.Inputs) {
+		return false
+	}
+	for i := range s.Inputs {
+		ok := s.Inputs[i].Equals(*other.Inputs[i])
+		if !ok {
+			return ok
+		}
+	}
+
+	if len(s.Outputs) != len(other.Outputs) {
+		return false
+	}
+	for i := range s.Outputs {
+		ok := s.Outputs[i].Equals(*other.Outputs[i])
+		if !ok {
+			return ok
+		}
+	}
+
+	return s.Fee.Equals(&other.Fee)
 }
 
 func CommitAmount(amount, mask ristretto.Scalar) ristretto.Point {

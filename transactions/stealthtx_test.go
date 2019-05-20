@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"bytes"
 	"crypto/rand"
 	"dusk-wallet/key"
 	"dusk-wallet/mlsag"
@@ -12,6 +13,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStealthTxEncodeDecode(t *testing.T) {
+
+	netPrefix := byte(12)
+
+	fee := int64(0)
+	numInputs := 1
+	numOutputs := 1
+
+	tx, err := NewStealth(netPrefix, fee)
+	assert.Nil(t, err)
+
+	var inputAmount ristretto.Scalar
+	inputAmount.SetBigInt(big.NewInt(20))
+	for i := 0; i < numInputs; i++ {
+		input := generateInput(inputAmount)
+		err = input.Prove()
+		assert.Nil(t, err)
+		tx.AddInput(input)
+	}
+
+	Alice := key.NewKeyPair([]byte("this is the users seed"))
+	pubAddr, err := Alice.PublicKey().PublicAddress(netPrefix)
+	assert.Nil(t, err)
+
+	var amountToSend ristretto.Scalar
+	amountToSend.SetBigInt(big.NewInt(20))
+	for i := 0; i < numOutputs; i++ {
+		err = tx.AddOutput(*pubAddr, amountToSend)
+		assert.Nil(t, err)
+	}
+
+	// Add decoys
+	tx.AddDecoys(2, generateDecoys)
+
+	buf := &bytes.Buffer{}
+	err = tx.Encode(buf)
+	assert.Nil(t, err)
+
+	var decodedTx StealthTx
+	err = decodedTx.Decode(buf)
+	assert.Nil(t, err)
+
+	ok := tx.Equals(decodedTx)
+	assert.True(t, ok)
+}
+
 func TestCommToZero(t *testing.T) {
 
 	netPrefix := byte(12)
@@ -20,7 +67,7 @@ func TestCommToZero(t *testing.T) {
 	numInputs := 2
 	numOutputs := 2
 
-	tx, err := New(netPrefix, fee)
+	tx, err := NewStealth(netPrefix, fee)
 	assert.Nil(t, err)
 
 	var inputAmount ristretto.Scalar
