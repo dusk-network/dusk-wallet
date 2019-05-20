@@ -2,6 +2,9 @@ package pedersen
 
 import (
 	generator "dusk-wallet/rangeproof/generators"
+	"encoding/binary"
+	"errors"
+	"io"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )
@@ -44,6 +47,35 @@ type Commitment struct {
 	// blinding factor is the blinding scalar.
 	// Note that n vectors have 1 blinding factor
 	BlindingFactor ristretto.Scalar
+}
+
+func (c *Commitment) Encode(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, c.Value.Bytes())
+}
+
+func (c *Commitment) Decode(r io.Reader) error {
+	if c == nil {
+		return errors.New("struct is nil")
+	}
+
+	var cBytes [32]byte
+	err := binary.Read(r, binary.BigEndian, &cBytes)
+	if err != nil {
+		return err
+	}
+	ok := c.Value.SetBytes(&cBytes)
+	if !ok {
+		return errors.New("could not set bytes for commitment, not an encodable point")
+	}
+	return nil
+}
+
+func (c *Commitment) EqualValue(other Commitment) bool {
+	return c.Value.Equals(&other.Value)
+}
+
+func (c *Commitment) Equals(other Commitment) bool {
+	return c.EqualValue(other) && c.BlindingFactor.Equals(&other.BlindingFactor)
 }
 
 func (p *Pedersen) commitToScalars(blind *ristretto.Scalar, scalars ...ristretto.Scalar) ristretto.Point {
@@ -130,7 +162,6 @@ func (p *Pedersen) CommitToVectors(vectors ...[]ristretto.Scalar) Commitment {
 			sum.Add(&sum, &commit)
 		} else {
 
-			// new generator -- XXX: we could use a hashing function here instead of appending i to it?
 			genData := append(p.GenData, uint8(i))
 			ped2 := New(genData)
 

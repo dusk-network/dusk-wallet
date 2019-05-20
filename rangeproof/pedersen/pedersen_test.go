@@ -1,12 +1,14 @@
 package pedersen_test
 
 import (
+	"bytes"
 	"math/big"
 	"testing"
 
+	"dusk-wallet/rangeproof/pedersen"
+
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
-	"dusk-wallet/rangeproof/pedersen"
 )
 
 func TestPedersenScalar(t *testing.T) {
@@ -18,6 +20,26 @@ func TestPedersenScalar(t *testing.T) {
 	commitment := ped.CommitToScalar(s)
 
 	assert.NotEqual(t, nil, commitment)
+
+}
+
+func TestEncodeDecode(t *testing.T) {
+	s := ristretto.Scalar{}
+	s.Rand()
+
+	c := pedersen.New([]byte("rand")).CommitToScalar(s)
+	assert.True(t, c.Equals(c))
+
+	buf := &bytes.Buffer{}
+	err := c.Encode(buf)
+	assert.Nil(t, err)
+
+	var decC pedersen.Commitment
+	err = decC.Decode(buf)
+	assert.Nil(t, err)
+
+	ok := decC.EqualValue(c)
+	assert.True(t, ok)
 
 }
 
