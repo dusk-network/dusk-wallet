@@ -1,6 +1,9 @@
 package rangeproof
 
 import (
+	"encoding/binary"
+	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/pkg/errors"
@@ -14,15 +17,13 @@ import (
 )
 
 // N is number of bits in range
-// So amount will be between 0..2^(N-1)
+// So amount will be between 0...2^(N-1)
 const N = 64
 
-// M is the number of outputs
-// for one bulletproof
+// M is the number of outputs for one bulletproof
 var M = 1
 
-// M is the maximum number of outputs allowed
-// per bulletproof
+// M is the maximum number of values allowed per rangeproof
 const maxM = 32
 
 // Proof is the constructed BulletProof
@@ -41,8 +42,7 @@ type Proof struct {
 	IPProof *innerproduct.Proof
 }
 
-// Prove will take a scalar as a parameter and
-// using zero knowledge, prove that it is [0, 2^N)
+// Prove will take a set of scalars as a parameter and prove that it is [0, 2^N)
 func Prove(v []ristretto.Scalar, debug bool) (Proof, error) {
 
 	if len(v) < 1 {
@@ -50,6 +50,9 @@ func Prove(v []ristretto.Scalar, debug bool) (Proof, error) {
 	}
 
 	M = len(v)
+	if M > maxM {
+		return Proof{}, fmt.Errorf("maximum amount of values must be less than %d", maxM)
+	}
 
 	// commitment to values v
 	Vs := make([]pedersen.Commitment, 0, M)
@@ -308,8 +311,7 @@ func computeHprime(H []ristretto.Point, y ristretto.Scalar) []ristretto.Point {
 	return Hprimes
 }
 
-// Verify takes a bullet proof and
-// returns true only if the proof was valid
+// Verify takes a bullet proof and returns true only if the proof was valid
 func Verify(p Proof) (bool, error) {
 
 	genData := []byte("dusk.BulletProof.vec1")
@@ -476,8 +478,172 @@ func megacheckWithC(ipproof *innerproduct.Proof, mu, x, y, z, t, taux, w ristret
 
 	ok := zero.Equals(&sum)
 	if !ok {
-		return false, errors.New("Megacheck failed")
+		return false, errors.New("megacheck failed")
 	}
 
 	return true, nil
+}
+
+func (p *Proof) Encode(w io.Writer) error {
+
+	lenV := uint32(len(p.V))
+	err := binary.Write(w, binary.BigEndian, lenV)
+	if err != nil {
+		return err
+	}
+	for i := range p.V {
+		// 32 bytes
+		err := p.V[i].Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, p.A.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.S.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.T1.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.T2.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.taux.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.mu.Bytes())
+	if err != nil {
+		return err
+	}
+	err = binary.Write(w, binary.BigEndian, p.t.Bytes())
+	if err != nil {
+		return err
+	}
+	return p.IPProof.Encode(w)
+}
+
+func (p *Proof) Decode(r io.Reader) error {
+
+	if p == nil {
+		return errors.New("struct is nil")
+	}
+
+	var lenV uint32
+	err := binary.Read(r, binary.BigEndian, &lenV)
+	if err != nil {
+		return err
+	}
+
+	p.V = make([]pedersen.Commitment, lenV)
+
+	for i := uint32(0); i < lenV; i++ {
+		err := p.V[i].Decode(r)
+		if err != nil {
+			return err
+		}
+	}
+	err = readerToPoint(r, &p.A)
+	if err != nil {
+		return err
+	}
+	err = readerToPoint(r, &p.S)
+	if err != nil {
+		return err
+	}
+	err = readerToPoint(r, &p.T1)
+	if err != nil {
+		return err
+	}
+	err = readerToPoint(r, &p.T2)
+	if err != nil {
+		return err
+	}
+	err = readerToScalar(r, &p.taux)
+	if err != nil {
+		return err
+	}
+	err = readerToScalar(r, &p.mu)
+	if err != nil {
+		return err
+	}
+	err = readerToScalar(r, &p.t)
+	if err != nil {
+		return err
+	}
+	p.IPProof = &innerproduct.Proof{}
+	return p.IPProof.Decode(r)
+}
+
+func (p *Proof) Equals(other Proof) bool {
+	if len(p.V) != len(other.V) {
+		return false
+	}
+
+	for i := range p.V {
+		ok := p.V[i].EqualValue(other.V[i])
+		if !ok {
+			return ok
+		}
+	}
+
+	ok := p.A.Equals(&other.A)
+	if !ok {
+		return ok
+	}
+	ok = p.S.Equals(&other.S)
+	if !ok {
+		return ok
+	}
+	ok = p.T1.Equals(&other.T1)
+	if !ok {
+		return ok
+	}
+	ok = p.T2.Equals(&other.T2)
+	if !ok {
+		return ok
+	}
+	ok = p.taux.Equals(&other.taux)
+	if !ok {
+		return ok
+	}
+	ok = p.mu.Equals(&other.mu)
+	if !ok {
+		return ok
+	}
+	ok = p.t.Equals(&other.t)
+	if !ok {
+		return ok
+	}
+	return true
+	return p.IPProof.Equals(*other.IPProof)
+}
+
+func readerToPoint(r io.Reader, p *ristretto.Point) error {
+	var x [32]byte
+	err := binary.Read(r, binary.BigEndian, &x)
+	if err != nil {
+		return err
+	}
+	ok := p.SetBytes(&x)
+	if !ok {
+		return errors.New("point not encodable")
+	}
+	return nil
+}
+func readerToScalar(r io.Reader, s *ristretto.Scalar) error {
+	var x [32]byte
+	err := binary.Read(r, binary.BigEndian, &x)
+	if err != nil {
+		return err
+	}
+	s.SetBytes(&x)
+	return nil
 }
