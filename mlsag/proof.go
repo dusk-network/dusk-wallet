@@ -2,7 +2,6 @@ package mlsag
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -78,7 +77,6 @@ func (p *Proof) shuffleSet() error {
 		pubKey := p.pubKeysMatrix[i]
 		if !pubKey.decoy {
 			p.index = i
-			fmt.Println()
 			return nil
 		}
 	}

@@ -3,7 +3,6 @@ package mlsag
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 
 	ristretto "github.com/bwesterb/go-ristretto"
@@ -57,7 +56,6 @@ func (res *Responses) Decode(r io.Reader, numResponses uint32) error {
 			return err
 		}
 		x.SetBytes(&xBytes)
-		fmt.Println("x", x)
 		res.AddResponse(x)
 	}
 	return nil
