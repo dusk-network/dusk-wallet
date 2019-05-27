@@ -146,6 +146,10 @@ func generateInput(amount ristretto.Scalar) *Input {
 	pubKey, privKey := generateKeyPair()
 
 	input := NewInput(txid, comm, amount, mask, pubKey, privKey)
+
+	input.Proof.SetPrimaryKey(mask)
+	input.Proof.SetCommToZero(mask)
+
 	return input
 }
 

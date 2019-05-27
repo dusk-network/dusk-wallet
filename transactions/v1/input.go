@@ -23,9 +23,9 @@ type Input struct {
 	PseudoCommitment ristretto.Point
 	pseudoMask       ristretto.Scalar
 
-	Proof     *mlsag.Proof
-	keyImages []ristretto.Point
-	Sig       *mlsag.Signature
+	Proof    *mlsag.DualKey
+	keyImage ristretto.Point
+	Sig      *mlsag.Signature
 }
 
 func NewInput(txid []byte, commitment ristretto.Point, amount, mask ristretto.Scalar, pubkey ristretto.Point, privKey ristretto.Scalar) *Input {
@@ -34,33 +34,29 @@ func NewInput(txid []byte, commitment ristretto.Point, amount, mask ristretto.Sc
 		Commitment: commitment,
 		amount:     amount,
 		mask:       mask,
-		Proof:      &mlsag.Proof{},
+		Proof:      mlsag.NewDualKey(),
 	}
 }
 
-func (i *Input) AddDecoyKeyVector(pubKeys mlsag.PubKeys) {
-	i.Proof.AddDecoy(pubKeys)
+func (i *Input) SetPrimaryKey(key ristretto.Scalar) {
+	i.Proof.SetPrimaryKey(key)
 }
-
-func (i *Input) AddSecretKeyVector(keys mlsag.PrivKeys) {
-	for x := range keys {
-		privKey := keys[x]
-		i.Proof.AddSecret(privKey)
-	}
+func (i *Input) SetCommToZer(key ristretto.Scalar) {
+	i.Proof.SetCommToZero(key)
 }
 
 func (i *Input) Prove() error {
-	sig, keyImages, err := i.Proof.Prove()
+	sig, keyImage, err := i.Proof.Prove()
 	if err != nil {
 		return err
 	}
-	i.keyImages = keyImages
+	i.keyImage = keyImage
 	i.Sig = sig
 	return nil
 }
 
 func (i *Input) Verify() (bool, error) {
-	return i.Sig.Verify(i.keyImages)
+	return i.Sig.Verify([]ristretto.Point{i.keyImage})
 }
 
 func (i *Input) Encode(w io.Writer) error {
@@ -82,6 +78,11 @@ func (i *Input) Encode(w io.Writer) error {
 	}
 	return i.Sig.Encode(w)
 }
+
+// func (i *Input) NodeInput() *nodetx.Input {
+// 	nodetx.NewInput(i.keyImages)
+// fmt.Println()
+// }
 
 func (i *Input) Decode(r io.Reader) error {
 
@@ -111,18 +112,16 @@ func (i *Input) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Sig decode")
 	i.Sig = &mlsag.Signature{}
 	return i.Sig.Decode(r)
 }
 
 func (i *Input) Equals(other Input) bool {
-	fmt.Println(10, i.TxID, other.TxID)
 	ok := bytes.Equal(i.TxID, other.TxID)
 	if !ok {
 		return ok
 	}
-	fmt.Println(11)
 	ok = i.Commitment.Equals(&other.Commitment)
 	if !ok {
 		return ok

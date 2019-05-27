@@ -14,20 +14,20 @@ func TestInputEncodeDecode(t *testing.T) {
 	amount.Rand()
 
 	input := generateInput(amount)
-	proof := &mlsag.Proof{}
-	proof.AddSecret(amount)
+	input.Proof.SetPrimaryKey(amount)
+	input.Proof.SetCommToZero(amount)
 
 	pubKeys := mlsag.PubKeys{}
 	var randPoint ristretto.Point
 	randPoint.Rand()
 	pubKeys.AddPubKey(randPoint)
-	proof.AddDecoy(pubKeys)
-	proof.AddDecoy(pubKeys)
+	pubKeys.AddPubKey(randPoint)
 
-	sig, keyImages, err := proof.Prove()
+	input.Proof.AddDecoy(pubKeys)
+	input.Proof.AddDecoy(pubKeys)
+
+	err := input.Prove()
 	assert.Nil(t, err)
-	input.keyImages = keyImages
-	input.Sig = sig
 
 	buf := &bytes.Buffer{}
 	err = input.Encode(buf)

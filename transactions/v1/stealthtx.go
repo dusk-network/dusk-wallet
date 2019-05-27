@@ -5,7 +5,6 @@ import (
 	"dusk-wallet/mlsag"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"math/big"
 
@@ -94,16 +93,11 @@ func (s *StealthTx) CalcCommToZero() error {
 		var commToZero ristretto.Scalar
 		commToZero.Sub(&input.pseudoMask, &input.mask)
 
-		privKeys := mlsag.PrivKeys{}
-
 		// Add key for pubkey to unlock input
-		privKeys.AddPrivateKey(input.privKey)
+		input.Proof.SetPrimaryKey(input.privKey)
 
 		// Add commitment to zero
-		privKeys.AddPrivateKey(commToZero)
-
-		// Add key vector to mlsag
-		input.AddSecretKeyVector(privKeys)
+		input.Proof.SetCommToZero(commToZero)
 
 		// Assume decoys have been added already
 
@@ -193,17 +187,14 @@ func (s *StealthTx) Encode(w io.Writer) error {
 	return nil
 }
 func (s *StealthTx) Decode(r io.Reader) error {
-	fmt.Println(0)
 	err := readerToScalar(r, &s.Fee)
 	if err != nil {
 		return err
 	}
-	fmt.Println(1)
 	err = readerToPoint(r, &s.R)
 	if err != nil {
 		return err
 	}
-	fmt.Println(2)
 
 	var lenInput uint32
 	err = binary.Read(r, binary.BigEndian, &lenInput)
