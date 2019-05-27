@@ -2,7 +2,6 @@ package mlsag
 
 import (
 	"bytes"
-	"math/rand"
 	"testing"
 
 	ristretto "github.com/bwesterb/go-ristretto"
@@ -10,8 +9,8 @@ import (
 )
 
 func TestEncodeDecode(t *testing.T) {
-	proof := generateRandProof(20, 10, 10)
-	sig, keyImages, err := proof.Prove()
+	proof := generateRandProof(20, 10)
+	sig, keyImages, err := proof.prove(true)
 	assert.Nil(t, err)
 	assert.NotNil(t, keyImages)
 
@@ -38,7 +37,7 @@ func TestShuffleSet(t *testing.T) {
 	numUsers := 3
 	numKeys := 1
 
-	proof := generateRandProof(numUsers, numKeys, 100)
+	proof := generateRandProof(numUsers, numKeys)
 	proof.mixSignerPubKey()
 	err := proof.shuffleSet()
 	assert.Equal(t, nil, err)
@@ -50,16 +49,21 @@ func TestShuffleSet(t *testing.T) {
 func TestMLSAGProveVerify(t *testing.T) {
 
 	numUsers := 10
-	numKeys := 34
+	numKeys := 3
+	skipLastKeyImage := true
 
-	proof := generateRandProof(numUsers, numKeys, 100)
+	proof := generateRandProof(numUsers, numKeys)
 
-	sig, keyImages, err := proof.Prove()
+	sig, keyImages, err := proof.prove(true)
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, numKeys, len(sig.KeyImages))
+	if skipLastKeyImage {
+		assert.Equal(t, numKeys-1, len(keyImages))
+	} else {
+		assert.Equal(t, numKeys, len(keyImages))
+	}
 	assert.Equal(t, numUsers, len(sig.PubKeys))
-	assert.Equal(t, proof.calculateKeyImages(), sig.KeyImages)
+	assert.Equal(t, proof.calculateKeyImages(skipLastKeyImage), keyImages)
 	assert.Equal(t, proof.pubKeysMatrix, sig.PubKeys)
 	assert.Equal(t, proof.msg, sig.Msg)
 
@@ -73,9 +77,9 @@ func TestMLSAGBadSig(t *testing.T) {
 	numUsers := 12
 	numKeys := 10
 
-	proof := generateRandProof(numUsers, numKeys, 100)
+	proof := generateRandProof(numUsers, numKeys)
 
-	sig, keyImages, err := proof.Prove()
+	sig, keyImages, err := proof.prove(true)
 	assert.Equal(t, nil, err)
 
 	sig.Msg = []byte("something random")
@@ -115,7 +119,7 @@ func generatePrivKeys(m int) PrivKeys {
 	return privKeys
 }
 
-func generateRandProof(numUsers, numKeys, prob int) *Proof {
+func generateRandProof(numUsers, numKeys int) *Proof {
 	proof := &Proof{}
 
 	numDecoys := numUsers - 1
@@ -136,17 +140,4 @@ func generateRandProof(numUsers, numKeys, prob int) *Proof {
 	proof.msg = []byte("hello world")
 
 	return proof
-}
-
-func generateRandBool(probability int) bool {
-	if probability >= 100 {
-		return true
-	}
-	if probability <= 0 {
-		return false
-	}
-	min := 0
-	max := 100
-	num := rand.Intn(max-min) + min
-	return num < probability
 }

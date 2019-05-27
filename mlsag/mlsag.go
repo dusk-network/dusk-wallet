@@ -11,11 +11,10 @@ import (
 )
 
 type Signature struct {
-	c         ristretto.Scalar
-	r         []Responses
-	PubKeys   []PubKeys
-	KeyImages []ristretto.Point
-	Msg       []byte
+	c       ristretto.Scalar
+	r       []Responses
+	PubKeys []PubKeys
+	Msg     []byte
 }
 
 func (s *Signature) Encode(w io.Writer) error {
@@ -42,12 +41,6 @@ func (s *Signature) Encode(w io.Writer) error {
 		return err
 	}
 
-	numKeyImages := uint32(len(s.KeyImages))
-	err = binary.Write(w, binary.BigEndian, numKeyImages)
-	if err != nil {
-		return err
-	}
-
 	// Encode the responses
 	for i := range s.r {
 		err = s.r[i].Encode(w)
@@ -64,14 +57,6 @@ func (s *Signature) Encode(w io.Writer) error {
 		}
 	}
 
-	// Encode the key images
-	for i := range s.KeyImages {
-		err = binary.Write(w, binary.BigEndian, s.KeyImages[i].Bytes())
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -83,51 +68,44 @@ func (s *Signature) Decode(r io.Reader) error {
 
 	err := readerToScalar(r, &s.c)
 	if err != nil {
+		fmt.Println(1)
 		return err
 	}
 
-	var lenR, numResponses, numKeyImages uint32
+	var lenR, numResponses uint32
 	err = binary.Read(r, binary.BigEndian, &lenR)
 	if err != nil {
+		fmt.Println(2)
 		return err
 	}
 	err = binary.Read(r, binary.BigEndian, &numResponses)
 	if err != nil {
-		return err
-	}
-	err = binary.Read(r, binary.BigEndian, &numKeyImages)
-	if err != nil {
+		fmt.Println(3)
 		return err
 	}
 
 	// Decode the responses
 	s.r = make([]Responses, lenR)
 	for i := uint32(0); i < lenR; i++ {
-		fmt.Println("dec", i)
 		err = s.r[i].Decode(r, numResponses)
 		if err != nil {
 			return err
 		}
 	}
+	fmt.Println(4)
 
 	// Decode pubkeys
 	s.PubKeys = make([]PubKeys, lenR)
 	for i := uint32(0); i < lenR; i++ {
+		fmt.Println("lenR", i)
 		err = s.PubKeys[i].Decode(r, numResponses)
 		if err != nil {
+			fmt.Println("err")
 			return err
 		}
+		fmt.Println("Passed ")
 	}
-
-	// Decode key images
-	s.KeyImages = make([]ristretto.Point, numKeyImages)
-	for i := uint32(0); i < numKeyImages; i++ {
-		err = readerToPoint(r, &s.KeyImages[i])
-		if err != nil {
-			return err
-		}
-	}
-
+	fmt.Println(5)
 	return nil
 }
 
@@ -137,8 +115,6 @@ func (s Signature) Equals(other Signature) bool {
 		return ok
 	}
 
-	fmt.Println(1)
-
 	for i := range s.r {
 		ok = s.r[i].Equals(other.r[i])
 		if !ok {
@@ -146,27 +122,16 @@ func (s Signature) Equals(other Signature) bool {
 		}
 	}
 
-	fmt.Println(2)
 	for i := range s.PubKeys {
 		ok = s.PubKeys[i].Equals(other.PubKeys[i])
 		if !ok {
 			return ok
 		}
 	}
-	fmt.Println(3)
-
-	for i := range s.KeyImages {
-		ok = s.KeyImages[i].Equals(&other.KeyImages[i])
-		if !ok {
-			return ok
-		}
-	}
-	fmt.Println(4)
-
 	return true
 }
 
-func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
+func (proof *Proof) prove(skipLastKeyImage bool) (*Signature, []ristretto.Point, error) {
 
 	proof.mixSignerPubKey()
 
@@ -176,14 +141,24 @@ func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
 		return nil, nil, err
 	}
 
-	keyImages := proof.calculateKeyImages()
+	// Check that all key vectors are the same size in pubkey matrix
+	pubKeyVecLen := proof.privKeys.Len()
+	for i := range proof.pubKeysMatrix {
+		if proof.pubKeysMatrix[i].Len() != pubKeyVecLen {
+			return nil, []ristretto.Point{}, errors.New("all vectors in the pubkey matrix must be the same size")
+		}
+	}
+
+	keyImages := proof.calculateKeyImages(skipLastKeyImage)
 	nonces := generateNonces(len(proof.privKeys))
+	fmt.Println("len privkeys", len(proof.privKeys))
 
 	numUsers := len(proof.pubKeysMatrix)
 	numKeysPerUser := len(proof.privKeys)
 
 	// We will overwrite the signers responses
 	responses := generateResponses(numUsers, numKeysPerUser, proof.index)
+	fmt.Println("len responses", numUsers, numKeysPerUser, len(responses))
 
 	// Let secretIndex = index of signer
 	secretIndex := proof.index
@@ -206,7 +181,7 @@ func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
 		}
 	}
 
-	for i := 0; i < signersPubKeys.Len(); i++ {
+	for i := 0; i < len(keyImages); i++ {
 
 		nonce := nonces[i]
 
@@ -268,11 +243,10 @@ func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
 	responses[proof.index] = realResponse
 
 	sig := &Signature{
-		c:         challenges[0],
-		r:         responses,
-		PubKeys:   proof.pubKeysMatrix,
-		KeyImages: keyImages,
-		Msg:       proof.msg,
+		c:       challenges[0],
+		r:       responses,
+		PubKeys: proof.pubKeysMatrix,
+		Msg:     proof.msg,
 	}
 
 	return sig, keyImages, nil
@@ -280,7 +254,7 @@ func (proof *Proof) Prove() (*Signature, []ristretto.Point, error) {
 
 func (sig *Signature) Verify(keyImages []ristretto.Point) (bool, error) {
 
-	if len(sig.PubKeys) == 0 || len(sig.r) == 0 || len(sig.KeyImages) == 0 {
+	if len(sig.PubKeys) == 0 || len(sig.r) == 0 || len(keyImages) == 0 {
 		return false, errors.New("cannot have zero length for responses, pubkeys or key images")
 	}
 
@@ -408,11 +382,12 @@ func generateChallenge(
 	return challenge, nil
 }
 
-func (proof *Proof) calculateKeyImages() []ristretto.Point {
+func (proof *Proof) calculateKeyImages(skipLastKeyImage bool) []ristretto.Point {
 	var keyImages []ristretto.Point
 
 	privKeys := proof.privKeys
-	pubKeys := proof.pubKeysMatrix[proof.index]
+	fmt.Println("len privkeys", len(proof.privKeys))
+	pubKeys := proof.signerPubKeys
 
 	for i := 0; i < len(privKeys); i++ {
 		var keyImage ristretto.Point
@@ -424,6 +399,16 @@ func (proof *Proof) calculateKeyImages() []ristretto.Point {
 
 		keyImages = append(keyImages, keyImage)
 	}
+
+	if !skipLastKeyImage {
+		return keyImages
+	}
+
+	// Here we assume that there will be atleast one privkey
+	// which means there will be atleast one key image
+	fmt.Println(len(keyImages))
+	keyImages = keyImages[:len(keyImages)-1]
+	fmt.Println(len(keyImages))
 	return keyImages
 }
 
