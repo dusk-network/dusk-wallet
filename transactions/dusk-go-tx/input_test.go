@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
+	transactions "dusk-wallet/transactions/dusk-go-tx"
+
 	"github.com/stretchr/testify/assert"
 	helper "gitlab.dusk.network/dusk-core/dusk-go/pkg/core/tests/helper"
-	"gitlab.dusk.network/dusk-core/dusk-go/pkg/core/transactions"
 )
 
 func TestEncodeDecodeInput(t *testing.T) {
@@ -14,7 +15,11 @@ func TestEncodeDecodeInput(t *testing.T) {
 	assert := assert.New(t)
 
 	// Random input
-	in, err := helper.RandomInput(t, false)
+	keyImage := helper.RandomSlice(t, 32)
+	in, err := transactions.NewInput(keyImage)
+	for i := 0; i < 100; i++ {
+		in.AddInput(helper.RandomSlice(t, 32))
+	}
 	assert.Nil(err)
 
 	// Encode random input into buffer

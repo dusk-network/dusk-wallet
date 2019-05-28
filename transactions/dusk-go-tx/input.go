@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io"
 
@@ -13,34 +14,27 @@ type Input struct {
 	// KeyImage is the image of the key that is being used to
 	// sign the transaction
 	KeyImage []byte // 32 bytes
-	// TxID is the transaction identifier of the transaction
-	// to which this input was an output.
-	TxID []byte // 32 bytes
-	// Index is the position in the current transaction
-	// that this input is placed at. Index 0 signifies the coinbase transaction.
-	Index uint8 // 1 byte
-	// Signature is the ring signature that is used
-	// to sign the transaction
-	Signature []byte // ~2500 bytes
+	// Index denotes a global counter, referring to the position that an input
+	// was as an output. In reference to every other input, from block zero.
+	// For example; 5 would indicate that this is the fifth input to be created in the blockchain
+	// Indices holds all of the inputs being used; real and decoy
+	Indices [][]byte // var byte
 }
 
 // NewInput constructs a new Input from the passed parameters.
-func NewInput(keyImage []byte, txID []byte, index uint8, sig []byte) (*Input, error) {
+func NewInput(keyImage []byte) (*Input, error) {
 
 	if len(keyImage) != 32 {
 		return nil, errors.New("key image does not equal 32 bytes")
 	}
 
-	if len(txID) != 32 {
-		return nil, errors.New("txID does not equal 32 bytes")
-	}
-
 	return &Input{
-		KeyImage:  keyImage,
-		TxID:      txID,
-		Index:     index,
-		Signature: sig,
+		KeyImage: keyImage,
 	}, nil
+}
+
+func (i *Input) AddInput(index []byte) {
+	i.Indices = append(i.Indices, index)
 }
 
 // Encode an Input object into an io.Writer.
@@ -49,16 +43,15 @@ func (i *Input) Encode(w io.Writer) error {
 		return err
 	}
 
-	if err := encoding.Write256(w, i.TxID); err != nil {
+	lenI := uint64(len(i.Indices))
+	if err := encoding.WriteUint64(w, binary.LittleEndian, lenI); err != nil {
 		return err
 	}
 
-	if err := encoding.WriteUint8(w, i.Index); err != nil {
-		return err
-	}
-
-	if err := encoding.WriteVarBytes(w, i.Signature); err != nil {
-		return err
+	for k := uint64(0); k < lenI; k++ {
+		if err := encoding.WriteVarBytes(w, i.Indices[k]); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -70,16 +63,16 @@ func (i *Input) Decode(r io.Reader) error {
 		return err
 	}
 
-	if err := encoding.Read256(r, &i.TxID); err != nil {
+	var lenI uint64
+	if err := encoding.ReadUint64(r, binary.LittleEndian, &lenI); err != nil {
 		return err
 	}
 
-	if err := encoding.ReadUint8(r, &i.Index); err != nil {
-		return err
-	}
-
-	if err := encoding.ReadVarBytes(r, &i.Signature); err != nil {
-		return err
+	i.Indices = make([][]byte, lenI)
+	for k := uint64(0); k < lenI; k++ {
+		if err := encoding.ReadVarBytes(r, &i.Indices[k]); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -95,12 +88,14 @@ func (i *Input) Equals(in *Input) bool {
 		return false
 	}
 
-	if !bytes.Equal(i.TxID, in.TxID) {
+	if len(i.Indices) != len(in.Indices) {
 		return false
 	}
 
-	if !bytes.Equal(i.Signature, in.Signature) {
-		return false
+	for k := range i.Indices {
+		if !bytes.Equal(i.Indices[k], in.Indices[k]) {
+			return false
+		}
 	}
 
 	// Omit Index equality; same input could be at two different
