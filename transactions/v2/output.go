@@ -23,6 +23,7 @@ type Output struct {
 	// position that this output is in, from the start from the blockchain
 	Index uint32
 
+	viewKey         key.PublicView
 	EncryptedAmount ristretto.Scalar
 	EncryptedMask   ristretto.Scalar
 }
@@ -36,6 +37,8 @@ func NewOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) *
 
 	stealthAddr := pubKey.StealthAddress(r, index)
 	output.setDestKey(stealthAddr)
+
+	output.viewKey = *pubKey.PubView
 
 	return output
 }
@@ -54,6 +57,14 @@ func (o *Output) setCommitment(comm ristretto.Point) {
 }
 func (o *Output) setMask(mask ristretto.Scalar) {
 	o.mask = mask
+}
+func (o *Output) setEncryptedAmount(x ristretto.Scalar) {
+	o.EncryptedAmount = x
+	o.baseOutput.EncryptedAmount = x.Bytes()
+}
+func (o *Output) setEncryptedMask(x ristretto.Scalar) {
+	o.EncryptedMask = x
+	o.baseOutput.EncryptedMask = x.Bytes()
 }
 
 // encAmount = amount + H(H(H(r*PubViewKey || index)))
