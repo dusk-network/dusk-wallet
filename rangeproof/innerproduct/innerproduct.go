@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"math/bits"
 
@@ -403,8 +402,6 @@ func (p *Proof) Encode(w io.Writer) error {
 		return err
 	}
 	lenL := uint32(len(p.L))
-
-	fmt.Println("encoding L", lenL)
 
 	for i := uint32(0); i < lenL; i++ {
 		err = binary.Write(w, binary.BigEndian, p.L[i].Bytes())
