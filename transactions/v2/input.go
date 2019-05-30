@@ -97,7 +97,7 @@ func (i *Input) Encode() dtx.Input {
 func (i *Input) AddDecoy(globalOffset []byte, pubKeys mlsag.PubKeys) {
 
 	// Add offset to baseInput
-	i.baseInput.AddInput(globalOffset)
+	i.baseInput.AddDecoy(globalOffset)
 
 	// Add pubkeys to MLSAG proof
 	i.Proof.AddDecoy(pubKeys)
