@@ -43,7 +43,7 @@ func (s *Standard) AddInput(input Input) {
 }
 
 // AddOutput will add an output to the list of outputs in the transaction.
-func (s *Standard) AddOutput(output *Output) {
+func (s *Standard) AddOutput(output Output) {
 	s.Outputs = append(s.Outputs, output)
 }
 
@@ -120,7 +120,7 @@ func (s *Standard) Decode(r io.Reader) error {
 
 	s.Outputs = make(Outputs, lOutputs)
 	for i := uint64(0); i < lOutputs; i++ {
-		s.Outputs[i] = &Output{}
+		s.Outputs[i] = Output{}
 		if err := s.Outputs[i].Decode(r); err != nil {
 			return err
 		}

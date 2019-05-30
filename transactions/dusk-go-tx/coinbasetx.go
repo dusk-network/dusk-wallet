@@ -46,7 +46,7 @@ func NewCoinbase(proof, ephemeralKey, generatorAddress []byte) *Coinbase {
 }
 
 // AddReward will add an Output to the Coinbase struct Rewards array.
-func (c *Coinbase) AddReward(output *Output) {
+func (c *Coinbase) AddReward(output Output) {
 	c.Rewards = append(c.Rewards, output)
 }
 
@@ -104,7 +104,7 @@ func (c *Coinbase) Decode(r io.Reader) error {
 
 	c.Rewards = make(Outputs, lRewards)
 	for i := uint64(0); i < lRewards; i++ {
-		c.Rewards[i] = &Output{}
+		c.Rewards[i] = Output{}
 		if err := c.Rewards[i].Decode(r); err != nil {
 			return err
 		}

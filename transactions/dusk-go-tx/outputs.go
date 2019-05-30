@@ -8,7 +8,7 @@ import (
 // Nitpick: The sort interface for input and output are similar.
 
 // Outputs is a slice of pointers to a set of `input`'s
-type Outputs []*Output
+type Outputs []Output
 
 // Len implements the sort interface
 func (out Outputs) Len() int { return len(out) }
@@ -32,7 +32,7 @@ func (out Outputs) Equals(other Outputs) bool {
 	for i := range out {
 		firstInput := out[i]
 		secondInput := other[i]
-		if !firstInput.Equals(secondInput) {
+		if !firstInput.Equals(&secondInput) {
 			return false
 		}
 	}
