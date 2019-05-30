@@ -53,6 +53,10 @@ func (s *Standard) AddOutput(output Output) {
 // Encode a Standard transaction and write it to an io.Writer
 func (s *Standard) Encode(w io.Writer) error {
 
+	if err := encoding.Write256(w, s.R); err != nil {
+		return err
+	}
+
 	if err := encoding.WriteUint8(w, uint8(s.TxType)); err != nil {
 		return err
 	}
@@ -88,6 +92,10 @@ func (s *Standard) Encode(w io.Writer) error {
 
 // Decode a reader into a standard transaction struct.
 func (s *Standard) Decode(r io.Reader) error {
+
+	if err := encoding.Read256(r, &s.R); err != nil {
+		return err
+	}
 
 	var Type uint8
 	if err := encoding.ReadUint8(r, &Type); err != nil {
