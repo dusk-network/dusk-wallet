@@ -240,3 +240,17 @@ func generateScalars(n int) []ristretto.Scalar {
 	}
 	return scalars
 }
+
+func CommitAmount(amount, mask ristretto.Scalar) ristretto.Point {
+
+	var blindPoint ristretto.Point
+	blindPoint.Derive([]byte("blindPoint"))
+
+	var aH, bG, commitment ristretto.Point
+	bG.ScalarMultBase(&mask)
+	aH.ScalarMult(&blindPoint, &amount)
+
+	commitment.Add(&aH, &bG)
+
+	return commitment
+}
