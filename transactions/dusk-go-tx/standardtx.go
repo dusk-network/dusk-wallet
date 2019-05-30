@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
@@ -25,6 +26,8 @@ type Standard struct {
 	Outputs Outputs
 	// Fee is the assosciated fee attached to the transaction. This is in cleartext.
 	Fee uint64
+	// Rangeproof to prove all values in outputs are positive
+	RangeProof []byte // var size
 }
 
 // NewStandard will return a Standard transaction
@@ -80,8 +83,7 @@ func (s *Standard) Encode(w io.Writer) error {
 	if err := encoding.WriteUint64(w, binary.LittleEndian, s.Fee); err != nil {
 		return err
 	}
-
-	return nil
+	return encoding.WriteVarBytes(w, s.RangeProof)
 }
 
 // Decode a reader into a standard transaction struct.
@@ -129,7 +131,8 @@ func (s *Standard) Decode(r io.Reader) error {
 	if err := encoding.ReadUint64(r, binary.LittleEndian, &s.Fee); err != nil {
 		return err
 	}
-	return nil
+
+	return encoding.ReadVarBytes(r, &s.RangeProof)
 }
 
 // CalculateHash hashes all of the encoded fields in a tx, if this has not been done already.
@@ -169,6 +172,10 @@ func (s *Standard) Equals(t Transaction) bool {
 		return false
 	}
 
+	if !bytes.Equal(s.R, other.R) {
+		return false
+	}
+
 	if s.Version != other.Version {
 		return false
 	}
@@ -189,6 +196,5 @@ func (s *Standard) Equals(t Transaction) bool {
 	// We could check whether it is set and then check, but
 	// the txid is not updated, if a modification is made after
 	// calculating the hash. What we can do, is state this edge case and analyse our use-cases.
-
-	return true
+	return bytes.Equal(s.RangeProof, other.RangeProof)
 }
