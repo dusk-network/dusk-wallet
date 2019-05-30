@@ -6,7 +6,7 @@ import (
 )
 
 // Inputs is a slice of pointers to a set of `input`'s
-type Inputs []*Input
+type Inputs []Input
 
 // Len implements the sort interface
 func (in Inputs) Len() int { return len(in) }
@@ -30,7 +30,7 @@ func (in Inputs) Equals(other Inputs) bool {
 	for i := range in {
 		firstInput := in[i]
 		secondInput := other[i]
-		if !firstInput.Equals(secondInput) {
+		if !firstInput.Equals(&secondInput) {
 			return false
 		}
 	}
