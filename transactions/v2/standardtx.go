@@ -5,17 +5,17 @@ import (
 	"dusk-wallet/rangeproof"
 	dtx "dusk-wallet/transactions/dusk-go-tx"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/bwesterb/go-ristretto"
 )
 
+const minDecoys = 7
 const maxInputs = 2000
 const maxOutputs = 32
 
 type StandardTx struct {
-	f FetchDecoys
-
 	baseTx dtx.Standard
 
 	r ristretto.Scalar
@@ -206,6 +206,14 @@ func (s *StandardTx) Prove() error {
 	err := s.ProveRangeProof()
 	if err != nil {
 		return err
+	}
+
+	// Check that each input has the minimum amount of decoys
+	for i := range s.Inputs {
+		numDecoys := s.Inputs[i].Proof.LenMembers()
+		if numDecoys < minDecoys {
+			return fmt.Errorf("each input must contain at least %d decoys input %d contains %d", minDecoys, i, numDecoys)
+		}
 	}
 
 	// Calculate commitment to zero, adding keys to mlsag

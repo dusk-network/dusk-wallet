@@ -2,7 +2,6 @@ package transactions
 
 import (
 	"dusk-wallet/key"
-	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -127,8 +126,8 @@ func TestProve(t *testing.T) {
 	err = tx.Prove()
 	assert.Nil(t, err)
 
-	t.Fail()
-	fmt.Printf("%+v", tx.Inputs[1].Proof)
+	// t.Fail()
+	// fmt.Printf("%+v", tx.Inputs[1].Proof)
 }
 
 func TestAddDecoys(t *testing.T) {
