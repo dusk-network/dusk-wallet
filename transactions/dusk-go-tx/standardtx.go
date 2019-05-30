@@ -10,6 +10,8 @@ import (
 // Standard is a generic transaction. It can also be seen as a stealth transaction.
 // It is used to make basic payments on the dusk network.
 type Standard struct {
+	// R is the transaction public key
+	R []byte //32 bytes
 	// TxType represents the transaction type
 	TxType TxType
 	// Version is the transaction version. It does not use semver.
@@ -36,7 +38,7 @@ func NewStandard(ver uint8, fee uint64) *Standard {
 }
 
 // AddInput will add an input to the list of inputs in the transaction.
-func (s *Standard) AddInput(input *Input) {
+func (s *Standard) AddInput(input Input) {
 	s.Inputs = append(s.Inputs, input)
 }
 
@@ -105,7 +107,7 @@ func (s *Standard) Decode(r io.Reader) error {
 
 	s.Inputs = make(Inputs, lInputs)
 	for i := uint64(0); i < lInputs; i++ {
-		s.Inputs[i] = &Input{}
+		s.Inputs[i] = Input{}
 		if err := s.Inputs[i].Decode(r); err != nil {
 			return err
 		}
