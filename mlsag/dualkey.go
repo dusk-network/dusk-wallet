@@ -20,12 +20,23 @@ func NewDualKey() *DualKey {
 	}
 }
 
-func (d *DualKey) SetPrimaryKey(key ristretto.Scalar) {
+func (d *DualKey) SetPrimaryKey(key ristretto.Scalar) ristretto.Point {
 	d.dualkeys[0] = key
+	return privKeyToPubKey(key)
 }
 
-func (d *DualKey) SetCommToZero(key ristretto.Scalar) {
+func (d *DualKey) SetCommToZero(key ristretto.Scalar) ristretto.Point {
 	d.dualkeys[1] = key
+	return privKeyToPubKey(key)
+}
+
+// SubCommToZero subtracts p from every point from the second public key
+// in the matrix of decoy pubkeys
+func (d *DualKey) SubCommToZero(p ristretto.Point) {
+	for i := range d.pubKeysMatrix {
+		commToZero := &d.pubKeysMatrix[i].keys[1]
+		commToZero.Sub(commToZero, &p)
+	}
 }
 
 func (d *DualKey) Prove() (*Signature, ristretto.Point, error) {

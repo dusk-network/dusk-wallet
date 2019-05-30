@@ -16,6 +16,36 @@ func TestDualKey(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestSubCommToZero(t *testing.T) {
+	dk := generateRandDualKeyProof(20)
+
+	var oldPoints []ristretto.Point
+
+	// Save all of the old keys
+	for i := range dk.pubKeysMatrix {
+		oldPoint := dk.pubKeysMatrix[i].keys[1]
+		oldPoints = append(oldPoints, oldPoint)
+	}
+
+	// Generate random point and subtract from commitment to zero column
+	var x ristretto.Point
+	x.Rand()
+	dk.SubCommToZero(x)
+
+	for i := range dk.pubKeysMatrix {
+		var expectedPoint ristretto.Point
+
+		// Fetch value of the second key
+		// before subtracting x
+		newPoint := dk.pubKeysMatrix[i].keys[1]
+
+		// Calculate expected point
+		expectedPoint.Sub(&oldPoints[i], &x)
+
+		assert.True(t, expectedPoint.Equals(&newPoint))
+	}
+}
+
 func generateRandDualKeyProof(numUsers int) *DualKey {
 	proof := NewDualKey()
 
