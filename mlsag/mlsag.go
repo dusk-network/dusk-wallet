@@ -17,7 +17,7 @@ type Signature struct {
 	Msg     []byte
 }
 
-func (s *Signature) Encode(w io.Writer) error {
+func (s *Signature) Encode(w io.Writer, encodeKeys bool) error {
 	err := binary.Write(w, binary.BigEndian, s.c.Bytes())
 	if err != nil {
 		return err
@@ -49,6 +49,10 @@ func (s *Signature) Encode(w io.Writer) error {
 		}
 	}
 
+	if !encodeKeys {
+		return nil
+	}
+
 	// Encode the pubkeys
 	for i := range s.PubKeys {
 		err = s.PubKeys[i].Encode(w)
@@ -60,7 +64,7 @@ func (s *Signature) Encode(w io.Writer) error {
 	return nil
 }
 
-func (s *Signature) Decode(r io.Reader) error {
+func (s *Signature) Decode(r io.Reader, decodeKeys bool) error {
 
 	if s == nil {
 		return errors.New("struct is nil")
@@ -68,19 +72,16 @@ func (s *Signature) Decode(r io.Reader) error {
 
 	err := readerToScalar(r, &s.c)
 	if err != nil {
-		fmt.Println(1)
 		return err
 	}
 
 	var lenR, numResponses uint32
 	err = binary.Read(r, binary.BigEndian, &lenR)
 	if err != nil {
-		fmt.Println(2)
 		return err
 	}
 	err = binary.Read(r, binary.BigEndian, &numResponses)
 	if err != nil {
-		fmt.Println(3)
 		return err
 	}
 
@@ -92,24 +93,23 @@ func (s *Signature) Decode(r io.Reader) error {
 			return err
 		}
 	}
-	fmt.Println(4)
+
+	if !decodeKeys {
+		return nil
+	}
 
 	// Decode pubkeys
 	s.PubKeys = make([]PubKeys, lenR)
 	for i := uint32(0); i < lenR; i++ {
-		fmt.Println("lenR", i)
 		err = s.PubKeys[i].Decode(r, numResponses)
 		if err != nil {
-			fmt.Println("err")
 			return err
 		}
-		fmt.Println("Passed ")
 	}
-	fmt.Println(5)
 	return nil
 }
 
-func (s Signature) Equals(other Signature) bool {
+func (s Signature) Equals(other Signature, includeKeys bool) bool {
 	ok := s.c.Equals(&other.c)
 	if !ok {
 		return ok
@@ -122,7 +122,15 @@ func (s Signature) Equals(other Signature) bool {
 		}
 	}
 
-	for i := range s.PubKeys {
+	if !includeKeys {
+		return true
+	}
+
+	if len(s.PubKeys) != len(other.PubKeys) {
+		return false
+	}
+
+	for i := 0; i < len(s.PubKeys); i++ {
 		ok = s.PubKeys[i].Equals(other.PubKeys[i])
 		if !ok {
 			return ok
@@ -151,14 +159,12 @@ func (proof *Proof) prove(skipLastKeyImage bool) (*Signature, []ristretto.Point,
 
 	keyImages := proof.calculateKeyImages(skipLastKeyImage)
 	nonces := generateNonces(len(proof.privKeys))
-	fmt.Println("len privkeys", len(proof.privKeys))
 
 	numUsers := len(proof.pubKeysMatrix)
 	numKeysPerUser := len(proof.privKeys)
 
 	// We will overwrite the signers responses
 	responses := generateResponses(numUsers, numKeysPerUser, proof.index)
-	fmt.Println("len responses", numUsers, numKeysPerUser, len(responses))
 
 	// Let secretIndex = index of signer
 	secretIndex := proof.index
@@ -386,7 +392,6 @@ func (proof *Proof) calculateKeyImages(skipLastKeyImage bool) []ristretto.Point 
 	var keyImages []ristretto.Point
 
 	privKeys := proof.privKeys
-	fmt.Println("len privkeys", len(proof.privKeys))
 	pubKeys := proof.signerPubKeys
 
 	for i := 0; i < len(privKeys); i++ {
@@ -406,9 +411,7 @@ func (proof *Proof) calculateKeyImages(skipLastKeyImage bool) []ristretto.Point 
 
 	// Here we assume that there will be atleast one privkey
 	// which means there will be atleast one key image
-	fmt.Println(len(keyImages))
 	keyImages = keyImages[:len(keyImages)-1]
-	fmt.Println(len(keyImages))
 	return keyImages
 }
 

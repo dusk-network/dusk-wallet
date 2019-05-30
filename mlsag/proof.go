@@ -53,13 +53,18 @@ func (proof *Proof) mixSignerPubKey() {
 func (p *Proof) AddSecret(privKey ristretto.Scalar) {
 
 	// Generate pubkey for given privkey
-	var rawPubKey ristretto.Point
-	rawPubKey.ScalarMultBase(&privKey)
+	rawPubKey := privKeyToPubKey(privKey)
 
 	// Add pubkey to signers set of pubkeys
 	p.signerPubKeys.AddPubKey(rawPubKey)
 	// Add privkey to signers set of priv keys
 	p.privKeys.AddPrivateKey(privKey)
+}
+
+func privKeyToPubKey(privkey ristretto.Scalar) ristretto.Point {
+	var pubkey ristretto.Point
+	pubkey.ScalarMultBase(&privkey)
+	return pubkey
 }
 
 // shuffle all pubkeys and sets the index
@@ -83,4 +88,8 @@ func (p *Proof) shuffleSet() error {
 
 	// If we get here, then we could not find the index
 	return errors.New("could not find the index of the non-decoy vector of pubkeys")
+}
+
+func (p *Proof) LenMembers() int {
+	return len(p.pubKeysMatrix)
 }

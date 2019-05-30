@@ -10,20 +10,31 @@ import (
 
 func TestEncodeDecode(t *testing.T) {
 	proof := generateRandProof(20, 10)
+
+	includeKeys := false
 	sig, keyImages, err := proof.prove(true)
 	assert.Nil(t, err)
 	assert.NotNil(t, keyImages)
+	encodeDecodeSig(t, sig, includeKeys)
 
+	includeKeys = true
+	sig, keyImages, err = proof.prove(true)
+	assert.Nil(t, err)
+	assert.NotNil(t, keyImages)
+	encodeDecodeSig(t, sig, includeKeys)
+}
+
+func encodeDecodeSig(t *testing.T, sig *Signature, includeKeys bool) {
 	buf := &bytes.Buffer{}
 
-	err = sig.Encode(buf)
+	err := sig.Encode(buf, includeKeys)
 	assert.Nil(t, err)
 
 	decodedSig := &Signature{}
-	err = decodedSig.Decode(buf)
+	err = decodedSig.Decode(buf, includeKeys)
 	assert.Nil(t, err)
 
-	ok := sig.Equals(*decodedSig)
+	ok := sig.Equals(*decodedSig, includeKeys)
 	assert.True(t, ok)
 }
 func TestGenNonces(t *testing.T) {
