@@ -16,9 +16,11 @@ func TestEncodeDecodeInput(t *testing.T) {
 
 	// Random input
 	keyImage := helper.RandomSlice(t, 32)
+	pseudoCommitment := helper.RandomSlice(t, 32)
 	in, err := transactions.NewInput(keyImage)
+	in.PseudoCommitment = pseudoCommitment
 	for i := 0; i < 100; i++ {
-		in.AddInput(helper.RandomSlice(t, 32))
+		in.AddDecoy(helper.RandomSlice(t, 32))
 	}
 	assert.Nil(err)
 

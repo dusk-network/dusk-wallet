@@ -38,7 +38,7 @@ func NewInput(keyImage []byte) (*Input, error) {
 	}, nil
 }
 
-func (i *Input) AddInput(globalOffset []byte) {
+func (i *Input) AddDecoy(globalOffset []byte) {
 	i.Offsets = append(i.Offsets, globalOffset)
 }
 
