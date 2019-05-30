@@ -5,7 +5,6 @@ import (
 	"dusk-wallet/mlsag"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 
 	ristretto "github.com/bwesterb/go-ristretto"
@@ -79,11 +78,6 @@ func (i *Input) Encode(w io.Writer) error {
 	return i.Sig.Encode(w)
 }
 
-// func (i *Input) NodeInput() *nodetx.Input {
-// 	nodetx.NewInput(i.keyImages)
-// fmt.Println()
-// }
-
 func (i *Input) Decode(r io.Reader) error {
 
 	if i == nil {
@@ -112,7 +106,6 @@ func (i *Input) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Sig decode")
 	i.Sig = &mlsag.Signature{}
 	return i.Sig.Decode(r)
 }
