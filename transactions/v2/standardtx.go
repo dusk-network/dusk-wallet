@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"bytes"
 	"dusk-wallet/key"
 	"dusk-wallet/rangeproof"
 	dtx "dusk-wallet/transactions/dusk-go-tx"
@@ -124,6 +125,7 @@ func (s *StandardTx) ProveRangeProof() error {
 	if len(proof.V) != len(amounts) {
 		return errors.New("rangeproof did not create proof for all amounts")
 	}
+	s.RangeProof = proof
 
 	// Move commitment values to their respective outputs
 	// along with their blinding factors
@@ -208,6 +210,17 @@ func (s *StandardTx) Prove() error {
 		return err
 	}
 
+	// Encrypt all amounts and masks in the outputs
+	for i := range s.Outputs {
+		output := s.Outputs[i]
+
+		encryptedAmount := encryptAmount(output.amount, s.r, output.Index, output.viewKey)
+		output.setEncryptedAmount(encryptedAmount)
+
+		encryptedMask := encryptMask(output.mask, s.r, output.Index, output.viewKey)
+		output.setEncryptedMask(encryptedMask)
+	}
+
 	// Check that each input has the minimum amount of decoys
 	for i := range s.Inputs {
 		numDecoys := s.Inputs[i].Proof.LenMembers()
@@ -234,8 +247,33 @@ func (s *StandardTx) Prove() error {
 	return nil
 }
 
-func (s *StandardTx) Encode() dtx.Standard {
-	return s.baseTx
+func (s *StandardTx) Encode() (dtx.Standard, error) {
+
+	// Add Fee
+	s.baseTx.Fee = uint64(s.Fee.BigInt().Int64())
+
+	// Add inputs to dusk-go standard tx
+	for i := range s.Inputs {
+		s.baseTx.Inputs = append(s.baseTx.Inputs, s.Inputs[i].baseInput)
+	}
+
+	// Add outputs to dusk-go standard tx
+	for i := range s.Outputs {
+		s.baseTx.Outputs = append(s.baseTx.Outputs, s.Outputs[i].baseOutput)
+	}
+
+	// Add transaction public key
+	s.baseTx.R = s.R.Bytes()
+
+	// Add rangeproof
+	buf := &bytes.Buffer{}
+	err := s.RangeProof.Encode(buf, true)
+	if err != nil {
+		return dtx.Standard{}, err
+	}
+	s.baseTx.RangeProof = buf.Bytes()
+
+	return s.baseTx, nil
 }
 
 func generateScalars(n int) []ristretto.Scalar {
