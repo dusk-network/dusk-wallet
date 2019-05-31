@@ -23,16 +23,17 @@ func TestProveBulletProof(t *testing.T) {
 
 func TestEncodeDecode(t *testing.T) {
 	p := generateProof(4, t)
+	includeCommits := false
 
 	buf := &bytes.Buffer{}
-	err := p.Encode(buf)
+	err := p.Encode(buf, includeCommits)
 	assert.Nil(t, err)
 
 	var decodedProof Proof
-	err = decodedProof.Decode(buf)
+	err = decodedProof.Decode(buf, includeCommits)
 	assert.Nil(t, err)
 
-	ok := decodedProof.Equals(*p)
+	ok := decodedProof.Equals(*p, includeCommits)
 	assert.True(t, ok)
 }
 

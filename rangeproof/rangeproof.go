@@ -484,22 +484,16 @@ func megacheckWithC(ipproof *innerproduct.Proof, mu, x, y, z, t, taux, w ristret
 	return true, nil
 }
 
-func (p *Proof) Encode(w io.Writer) error {
+func (p *Proof) Encode(w io.Writer, includeCommits bool) error {
 
-	lenV := uint32(len(p.V))
-	err := binary.Write(w, binary.BigEndian, lenV)
-	if err != nil {
-		return err
-	}
-	for i := range p.V {
-		// 32 bytes
-		err := p.V[i].Encode(w)
+	if includeCommits {
+		err := pedersen.EncodeCommitments(w, p.V)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = binary.Write(w, binary.BigEndian, p.A.Bytes())
+	err := binary.Write(w, binary.BigEndian, p.A.Bytes())
 	if err != nil {
 		return err
 	}
@@ -530,27 +524,21 @@ func (p *Proof) Encode(w io.Writer) error {
 	return p.IPProof.Encode(w)
 }
 
-func (p *Proof) Decode(r io.Reader) error {
+func (p *Proof) Decode(r io.Reader, includeCommits bool) error {
 
 	if p == nil {
 		return errors.New("struct is nil")
 	}
 
-	var lenV uint32
-	err := binary.Read(r, binary.BigEndian, &lenV)
-	if err != nil {
-		return err
-	}
-
-	p.V = make([]pedersen.Commitment, lenV)
-
-	for i := uint32(0); i < lenV; i++ {
-		err := p.V[i].Decode(r)
+	if includeCommits {
+		comms, err := pedersen.DecodeCommitments(r)
 		if err != nil {
 			return err
 		}
+		p.V = comms
 	}
-	err = readerToPoint(r, &p.A)
+
+	err := readerToPoint(r, &p.A)
 	if err != nil {
 		return err
 	}
@@ -582,8 +570,8 @@ func (p *Proof) Decode(r io.Reader) error {
 	return p.IPProof.Decode(r)
 }
 
-func (p *Proof) Equals(other Proof) bool {
-	if len(p.V) != len(other.V) {
+func (p *Proof) Equals(other Proof, includeCommits bool) bool {
+	if len(p.V) != len(other.V) && includeCommits {
 		return false
 	}
 
