@@ -73,12 +73,7 @@ func (c *Coinbase) Encode(w io.Writer) error {
 			return err
 		}
 	}
-
-	if err := encoding.Write256(w, c.GeneratorAddress); err != nil {
-		return err
-	}
-
-	return nil
+	return encoding.Write256(w, c.GeneratorAddress)
 }
 
 // Decode implements the Decoder interface
@@ -109,12 +104,7 @@ func (c *Coinbase) Decode(r io.Reader) error {
 			return err
 		}
 	}
-
-	if err := encoding.Read256(r, &c.GeneratorAddress); err != nil {
-		return err
-	}
-
-	return nil
+	return encoding.Read256(r, &c.GeneratorAddress)
 }
 
 // CalculateHash hashes all of the encoded fields in a tx, if this has not been done already.
@@ -164,10 +154,5 @@ func (c *Coinbase) Equals(t Transaction) bool {
 	if !bytes.Equal(c.Proof, other.Proof) {
 		return false
 	}
-
-	if !c.Rewards.Equals(other.Rewards) {
-		return false
-	}
-
-	return true
+	return c.Rewards.Equals(other.Rewards)
 }
