@@ -53,6 +53,21 @@ func (c *Commitment) Encode(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, c.Value.Bytes())
 }
 
+func EncodeCommitments(w io.Writer, comms []Commitment) error {
+	lenV := uint32(len(comms))
+	err := binary.Write(w, binary.BigEndian, lenV)
+	if err != nil {
+		return err
+	}
+	for i := range comms {
+		err := comms[i].Encode(w)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Commitment) Decode(r io.Reader) error {
 	if c == nil {
 		return errors.New("struct is nil")
@@ -68,6 +83,26 @@ func (c *Commitment) Decode(r io.Reader) error {
 		return errors.New("could not set bytes for commitment, not an encodable point")
 	}
 	return nil
+}
+
+func DecodeCommitments(r io.Reader) ([]Commitment, error) {
+
+	var lenV uint32
+	err := binary.Read(r, binary.BigEndian, &lenV)
+	if err != nil {
+		return nil, err
+	}
+
+	comms := make([]Commitment, lenV)
+
+	for i := uint32(0); i < lenV; i++ {
+		err := comms[i].Decode(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return comms, nil
 }
 
 func (c *Commitment) EqualValue(other Commitment) bool {
