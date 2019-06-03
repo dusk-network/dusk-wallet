@@ -137,9 +137,9 @@ func (s *StandardTx) ProveRangeProof() error {
 }
 
 func calculateCommToZero(inputs []*Input, outputs []*Output) {
-	var sumOutputMask ristretto.Scalar
 
 	// Aggregate mask values in each outputs commitment
+	var sumOutputMask ristretto.Scalar
 	for _, output := range outputs {
 		sumOutputMask.Add(&sumOutputMask, &output.mask)
 	}
@@ -267,7 +267,7 @@ func (s *StandardTx) Encode() (dtx.Standard, error) {
 
 	// Add rangeproof
 	buf := &bytes.Buffer{}
-	err := s.RangeProof.Encode(buf, true)
+	err := s.RangeProof.Encode(buf, false)
 	if err != nil {
 		return dtx.Standard{}, err
 	}
