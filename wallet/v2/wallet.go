@@ -3,6 +3,7 @@ package wallet
 import (
 	"crypto/rand"
 	"dusk-wallet/key"
+	dtx "dusk-wallet/transactions/dusk-go-tx"
 	"dusk-wallet/transactions/v2"
 	"math/big"
 
@@ -46,6 +47,46 @@ func (w *Wallet) NewStealthTx(fee int64) (*transactions.StandardTx, error) {
 		return nil, err
 	}
 	return tx, nil
+}
+
+func (w *Wallet) NewTimeLockTx(lock uint64, tx *transactions.StandardTx) (*dtx.TimeLock, error) {
+	standard, err := tx.Encode()
+	if err != nil {
+		return nil, err
+	}
+	fee := tx.Fee.BigInt().Uint64()
+	tl := dtx.NewTimeLock(1, lock, fee)
+
+	tl.Standard = standard
+	return tl, nil
+}
+
+func (w *Wallet) NewBidTx(lock uint64, M []byte, tx *transactions.StandardTx) (*dtx.Bid, error) {
+	standard, err := tx.Encode()
+	if err != nil {
+		return nil, err
+	}
+	fee := tx.Fee.BigInt().Uint64()
+	bid, err := dtx.NewBid(1, lock, fee, M)
+	if err != nil {
+		return nil, err
+	}
+	bid.Standard = standard
+	return bid, nil
+}
+
+func (w *Wallet) NewStakeTx(lock uint64, PubKeyED, PubKeyBLS []byte, tx *transactions.StandardTx) (*dtx.Stake, error) {
+	standard, err := tx.Encode()
+	if err != nil {
+		return nil, err
+	}
+	fee := tx.Fee.BigInt().Uint64()
+	stake, err := dtx.NewStake(1, lock, fee, PubKeyED, PubKeyBLS)
+	if err != nil {
+		return nil, err
+	}
+	stake.Standard = standard
+	return stake, nil
 }
 
 // AddInputs adds up the total outputs and fee then fetches inputs to consolidate this
