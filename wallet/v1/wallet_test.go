@@ -4,7 +4,7 @@ import (
 	"dusk-wallet/key"
 	"dusk-wallet/mlsag"
 	"dusk-wallet/rangeproof"
-	"dusk-wallet/transactions"
+	"dusk-wallet/transactions/v1"
 	"math/big"
 	"math/rand"
 	"testing"

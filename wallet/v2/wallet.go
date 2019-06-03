@@ -3,7 +3,7 @@ package wallet
 import (
 	"crypto/rand"
 	"dusk-wallet/key"
-	"dusk-wallet/transactions"
+	"dusk-wallet/transactions/v2"
 	"math/big"
 
 	"github.com/bwesterb/go-ristretto"
@@ -40,8 +40,8 @@ func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) 
 	}, nil
 }
 
-func (w *Wallet) NewStealthTx(fee int64) (*transactions.StealthTx, error) {
-	tx, err := transactions.NewStealth(w.netPrefix, fee)
+func (w *Wallet) NewStealthTx(fee int64) (*transactions.StandardTx, error) {
+	tx, err := transactions.NewStandard(w.netPrefix, fee)
 	if err != nil {
 		return nil, err
 	}
@@ -49,10 +49,9 @@ func (w *Wallet) NewStealthTx(fee int64) (*transactions.StealthTx, error) {
 }
 
 // AddInputs adds up the total outputs and fee then fetches inputs to consolidate this
-func (w *Wallet) AddInputs(tx *transactions.StealthTx) error {
+func (w *Wallet) AddInputs(tx *transactions.StandardTx) error {
 
 	totalAmount := tx.Fee.BigInt().Int64() + tx.TotalSent.BigInt().Int64()
-
 	inputs, changeAmount, err := w.fetchInputs(w.netPrefix, totalAmount, w.keyPair)
 	if err != nil {
 		return err
@@ -76,7 +75,7 @@ func (w *Wallet) AddInputs(tx *transactions.StealthTx) error {
 	return tx.AddOutput(*changeAddr, x)
 }
 
-func (w *Wallet) Sign(tx *transactions.StealthTx) error {
+func (w *Wallet) Sign(tx *transactions.StandardTx) error {
 
 	// Assuming user has added all of the outputs
 
@@ -92,7 +91,7 @@ func (w *Wallet) Sign(tx *transactions.StealthTx) error {
 		return err
 	}
 
-	return tx.CalcCommToZero()
+	return tx.Prove()
 }
 
 // Save saves the private key information to a json file
