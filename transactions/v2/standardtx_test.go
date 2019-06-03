@@ -10,16 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewStandardTx(t *testing.T) {
-
-	tx, netPrefix, fee := randomStandardTx(t)
-
-	assert.Equal(t, tx.netPrefix, netPrefix)
-	assert.Equal(t, tx.Fee.BigInt().Int64(), fee)
-
-	assert.Equal(t, tx.baseTx.Fee, uint64(fee))
-	assert.Equal(t, tx.baseTx.R, tx.R.Bytes())
-}
 
 func TestAddOutputs(t *testing.T) {
 	tx, netPrefix, _ := randomStandardTx(t)
@@ -97,8 +87,7 @@ func TestCalCommToZero(t *testing.T) {
 	for i := range outputs {
 		y.Add(&y, &outputs[i].Commitment)
 	}
-
-	x.Sub(&x, &y) // Should be zero
+	x.Sub(&x, &y) // Should be zero; proves that sumOuts - sumIns = 0
 
 	var zero ristretto.Point
 	zero.SetZero()
@@ -125,9 +114,6 @@ func TestProve(t *testing.T) {
 	// Create all necessary proofs
 	err = tx.Prove()
 	assert.Nil(t, err)
-
-	// t.Fail()
-	// fmt.Printf("%+v", tx.Inputs[1].Proof)
 }
 
 func TestAddDecoys(t *testing.T) {
