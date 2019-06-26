@@ -75,7 +75,7 @@ func (i *Input) Encode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return i.Sig.Encode(w)
+	return i.Sig.Encode(w, false)
 }
 
 func (i *Input) Decode(r io.Reader) error {
@@ -107,7 +107,7 @@ func (i *Input) Decode(r io.Reader) error {
 		return err
 	}
 	i.Sig = &mlsag.Signature{}
-	return i.Sig.Decode(r)
+	return i.Sig.Decode(r, false)
 }
 
 func (i *Input) Equals(other Input) bool {
@@ -127,7 +127,7 @@ func (i *Input) Equals(other Input) bool {
 	if !ok {
 		return ok
 	}
-	return i.Sig.Equals(*other.Sig)
+	return i.Sig.Equals(*other.Sig, false)
 }
 
 func readerToPoint(r io.Reader, p *ristretto.Point) error {

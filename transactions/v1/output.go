@@ -44,7 +44,7 @@ func (o *Output) Encode(w io.Writer) error {
 		return err
 	}
 
-	return o.RangeProof.Encode(w)
+	return o.RangeProof.Encode(w, false)
 }
 
 func (o *Output) Decode(r io.Reader) error {
@@ -68,7 +68,7 @@ func (o *Output) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	return o.RangeProof.Decode(r)
+	return o.RangeProof.Decode(r, false)
 }
 
 func (o *Output) Equals(other Output) bool {
@@ -88,7 +88,7 @@ func (o *Output) Equals(other Output) bool {
 	if !ok {
 		return ok
 	}
-	return o.RangeProof.Equals(other.RangeProof)
+	return o.RangeProof.Equals(other.RangeProof, false)
 }
 
 func NewOutput(r, amount ristretto.Scalar, index uint32, pubKey key.PublicKey) (*Output, error) {
