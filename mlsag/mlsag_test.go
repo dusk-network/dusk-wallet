@@ -49,7 +49,7 @@ func TestShuffleSet(t *testing.T) {
 	numKeys := 1
 
 	proof := generateRandProof(numUsers, numKeys)
-	proof.mixSignerPubKey()
+	proof.addSignerPubKey()
 	err := proof.shuffleSet()
 	assert.Equal(t, nil, err)
 

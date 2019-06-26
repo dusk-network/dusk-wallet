@@ -44,7 +44,7 @@ func (p *Proof) AddDecoys(keys []PubKeys) {
 	}
 }
 
-func (proof *Proof) mixSignerPubKey() {
+func (proof *Proof) addSignerPubKey() {
 	// Add signers pubkey to matrix
 	proof.signerPubKeys.decoy = false
 	proof.addPubKeys(proof.signerPubKeys)
@@ -86,7 +86,7 @@ func (p *Proof) shuffleSet() error {
 		}
 	}
 
-	// If we get here, then we could not find the index
+	// If we get here, then we could not find the index of the signers pubkey
 	return errors.New("could not find the index of the non-decoy vector of pubkeys")
 }
 

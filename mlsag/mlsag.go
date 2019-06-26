@@ -141,7 +141,7 @@ func (s Signature) Equals(other Signature, includeKeys bool) bool {
 
 func (proof *Proof) prove(skipLastKeyImage bool) (*Signature, []ristretto.Point, error) {
 
-	proof.mixSignerPubKey()
+	proof.addSignerPubKey()
 
 	// Shuffle the PubKeys and update the index for our corresponding key
 	err := proof.shuffleSet()
@@ -395,14 +395,7 @@ func (proof *Proof) calculateKeyImages(skipLastKeyImage bool) []ristretto.Point 
 	pubKeys := proof.signerPubKeys
 
 	for i := 0; i < len(privKeys); i++ {
-		var keyImage ristretto.Point
-		keyImage.Set(&pubKeys.keys[i])
-		// P = H(xG)
-		keyImage.Derive(keyImage.Bytes())
-		// P = xH(P)
-		keyImage.ScalarMult(&keyImage, &privKeys[i])
-
-		keyImages = append(keyImages, keyImage)
+		keyImages = append(keyImages, CalculateKeyImage(privKeys[i], pubKeys.keys[i]))
 	}
 
 	if !skipLastKeyImage {
@@ -413,6 +406,16 @@ func (proof *Proof) calculateKeyImages(skipLastKeyImage bool) []ristretto.Point 
 	// which means there will be atleast one key image
 	keyImages = keyImages[:len(keyImages)-1]
 	return keyImages
+}
+
+func CalculateKeyImage(privKey ristretto.Scalar, pubKey ristretto.Point) ristretto.Point {
+	var keyImage ristretto.Point
+	keyImage.Set(&pubKey)
+	// P = H(xG)
+	keyImage.Derive(keyImage.Bytes())
+	// P = xH(P)
+	keyImage.ScalarMult(&keyImage, &privKey)
+	return keyImage
 }
 
 func isNumInList(x int, numList []int) bool {

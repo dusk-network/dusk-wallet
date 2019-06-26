@@ -31,7 +31,7 @@ func TestAddSecretKeys(t *testing.T) {
 		p.AddSecret(realKeys[i])
 	}
 
-	p.mixSignerPubKey()
+	p.addSignerPubKey()
 
 	assert.Equal(t, 2, len(p.pubKeysMatrix))
 

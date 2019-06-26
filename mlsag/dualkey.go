@@ -30,6 +30,10 @@ func (d *DualKey) SetCommToZero(key ristretto.Scalar) ristretto.Point {
 	return privKeyToPubKey(key)
 }
 
+func (d *DualKey) SetMsg(msg []byte) {
+	d.Proof.msg = msg
+}
+
 // SubCommToZero subtracts p from every point from the second public key
 // in the matrix of decoy pubkeys
 func (d *DualKey) SubCommToZero(p ristretto.Point) {

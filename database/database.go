@@ -34,10 +34,6 @@ func (db *DB) Put(key, value []byte) error {
 
 func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privkey ristretto.Scalar) error {
 
-	// XXX: Encrypt data using priv view key
-
-	fmt.Println("Received Input amount:", amount.BigInt().Int64())
-
 	buf := &bytes.Buffer{}
 	err := binary.Write(buf, binary.BigEndian, amount.Bytes())
 	if err != nil {
