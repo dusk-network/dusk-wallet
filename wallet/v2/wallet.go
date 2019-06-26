@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"crypto/rand"
+	"dusk-wallet/database"
 	"dusk-wallet/key"
 	dtx "dusk-wallet/transactions/dusk-go-tx"
 	"dusk-wallet/transactions/v2"
@@ -15,16 +16,17 @@ const numMixins = 7
 
 // FetchInputs returns a slice of inputs such that Sum(Inputs)- Sum(Outputs) >= 0
 // If > 0, then a change address is created for the remaining amount
-type FetchInputs func(netPrefix byte, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error)
+type FetchInputs func(netPrefix byte, db database.Database, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error)
 
 type Wallet struct {
+	db          database.Database
 	netPrefix   byte
 	keyPair     *key.Key
 	fetchDecoys transactions.FetchDecoys
 	fetchInputs FetchInputs
 }
 
-func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) (*Wallet, error) {
+func New(netPrefix byte, db database.Database, fDecoys transactions.FetchDecoys, fInputs FetchInputs) (*Wallet, error) {
 
 	// random seed
 	seed := make([]byte, 64)
@@ -34,6 +36,7 @@ func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) 
 	}
 
 	return &Wallet{
+		db:          db,
 		netPrefix:   netPrefix,
 		keyPair:     key.NewKeyPair(seed),
 		fetchDecoys: fDecoys,
@@ -41,7 +44,7 @@ func New(netPrefix byte, fDecoys transactions.FetchDecoys, fInputs FetchInputs) 
 	}, nil
 }
 
-func (w *Wallet) NewStealthTx(fee int64) (*transactions.StandardTx, error) {
+func (w *Wallet) NewStandardTx(fee int64) (*transactions.StandardTx, error) {
 	tx, err := transactions.NewStandard(w.netPrefix, fee)
 	if err != nil {
 		return nil, err
@@ -93,7 +96,7 @@ func (w *Wallet) NewStakeTx(lock uint64, PubKeyED, PubKeyBLS []byte, tx *transac
 func (w *Wallet) AddInputs(tx *transactions.StandardTx) error {
 
 	totalAmount := tx.Fee.BigInt().Int64() + tx.TotalSent.BigInt().Int64()
-	inputs, changeAmount, err := w.fetchInputs(w.netPrefix, totalAmount, w.keyPair)
+	inputs, changeAmount, err := w.fetchInputs(w.netPrefix, w.db, totalAmount, w.keyPair)
 	if err != nil {
 		return err
 	}
@@ -126,13 +129,17 @@ func (w *Wallet) Sign(tx *transactions.StandardTx) error {
 		return err
 	}
 
-	// fetch decoys
+	// Fetch decoys
 	err = tx.AddDecoys(numMixins, w.fetchDecoys)
 	if err != nil {
 		return err
 	}
 
 	return tx.Prove()
+}
+
+func (w *Wallet) PublicKey() key.PublicKey {
+	return *w.keyPair.PublicKey()
 }
 
 // Save saves the private key information to a json file

@@ -84,6 +84,26 @@ func encryptAmount(amount, r ristretto.Scalar, index uint32, pubViewKey key.Publ
 	return encryptedAmount
 }
 
+// decAmount = EncAmount - H(H(H(R*PrivViewKey || index)))
+func decryptAmount(encAmount ristretto.Scalar, R ristretto.Point, index uint32, privViewKey key.PrivateView) ristretto.Scalar {
+
+	var Rview ristretto.Point
+	pv := (ristretto.Scalar)(privViewKey)
+	Rview.ScalarMult(&R, &pv)
+
+	rViewIndex := append(Rview.Bytes(), uint32ToBytes(index)...)
+
+	var encryptKey ristretto.Scalar
+	encryptKey.Derive(rViewIndex)
+	encryptKey.Derive(encryptKey.Bytes())
+	encryptKey.Derive(encryptKey.Bytes())
+
+	var decryptedAmount ristretto.Scalar
+	decryptedAmount.Sub(&encAmount, &encryptKey)
+
+	return decryptedAmount
+}
+
 // encMask = mask + H(H(r*PubViewKey || index))
 func encryptMask(mask, r ristretto.Scalar, index uint32, pubViewKey key.PublicView) ristretto.Scalar {
 	rView := pubViewKey.ScalarMult(r)
@@ -97,6 +117,24 @@ func encryptMask(mask, r ristretto.Scalar, index uint32, pubViewKey key.PublicVi
 	encryptedMask.Add(&mask, &encryptKey)
 
 	return encryptedMask
+}
+
+// decMask = Encmask - H(H(r*PubViewKey || index))
+func decryptMask(encMask ristretto.Scalar, R ristretto.Point, index uint32, privViewKey key.PrivateView) ristretto.Scalar {
+	var Rview ristretto.Point
+	pv := (ristretto.Scalar)(privViewKey)
+	Rview.ScalarMult(&R, &pv)
+
+	rViewIndex := append(Rview.Bytes(), uint32ToBytes(index)...)
+
+	var encryptKey ristretto.Scalar
+	encryptKey.Derive(rViewIndex)
+	encryptKey.Derive(encryptKey.Bytes())
+
+	var decryptedMask ristretto.Scalar
+	decryptedMask.Sub(&encMask, &encryptKey)
+
+	return decryptedMask
 }
 
 func uint32ToBytes(x uint32) []byte {

@@ -136,6 +136,10 @@ func (s *StandardTx) ProveRangeProof() error {
 	return nil
 }
 
+/*
+
+ */
+
 func calculateCommToZero(inputs []*Input, outputs []*Output) {
 
 	// Aggregate mask values in each outputs commitment
@@ -178,6 +182,7 @@ func calculateCommToZero(inputs []*Input, outputs []*Output) {
 		input.setPseudoComm(pseudoCommitment)
 	}
 }
+
 func (s *StandardTx) AddDecoys(numMixins int, f FetchDecoys) error {
 
 	if f == nil {

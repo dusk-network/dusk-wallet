@@ -27,3 +27,40 @@ func TestNewOutput(t *testing.T) {
 	assert.Equal(t, out.amount, amount)
 	assert.Equal(t, out.Index, r32)
 }
+
+func TestEncryptionAmount(t *testing.T) {
+	keyPair := key.NewKeyPair([]byte("this is the seed"))
+	var amount, r ristretto.Scalar
+	amount.Rand()
+	r.Rand()
+
+	var R ristretto.Point
+	R.ScalarMultBase(&r)
+
+	pvKey, err := keyPair.PrivateView()
+	assert.Nil(t, err)
+	
+	encryptedAmount := encryptAmount(amount, r, 0, *keyPair.PublicKey().PubView)
+	decryptedAmount := decryptAmount(encryptedAmount, R, 0, *pvKey)
+	
+	assert.Equal(t, decryptedAmount, amount)
+}
+
+func TestEncryptionMask(t *testing.T) {
+	keyPair := key.NewKeyPair([]byte("this is the seed"))
+	var mask, r ristretto.Scalar
+	mask.Rand()
+	r.Rand()
+	
+	var R ristretto.Point
+	R.ScalarMultBase(&r)
+	
+		pvKey, err := keyPair.PrivateView()
+		assert.Nil(t, err)
+
+	encryptedMask := encryptMask(mask, r, 0, *keyPair.PublicKey().PubView)
+
+	decryptedMask := decryptMask(encryptedMask, R, 0, *pvKey)
+
+	assert.Equal(t, decryptedMask, mask)
+}

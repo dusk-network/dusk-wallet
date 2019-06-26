@@ -2,13 +2,14 @@ package wallet
 
 import (
 	"bytes"
+	"dusk-wallet/database"
 	"dusk-wallet/key"
 	"dusk-wallet/rangeproof"
 	"dusk-wallet/rangeproof/pedersen"
 	"dusk-wallet/transactions/v2"
-	"fmt"
 	"math/big"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -16,15 +17,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var dbPath = "testDb"
+
 func TestWallet(t *testing.T) {
 
 	netPrefix := byte(1)
 	fee := int64(20)
 
-	w, err := New(netPrefix, generateDecoys, fetchInputs)
+	db, err := database.New(dbPath)
+	assert.Nil(t, err)
+	defer os.RemoveAll(dbPath)
+
+	w, err := New(netPrefix, db, generateDecoys, fetchInputs)
 	assert.Nil(t, err)
 
-	tx, err := w.NewStealthTx(fee)
+	tx, err := w.NewStandardTx(fee)
 	assert.Nil(t, err)
 
 	sendAddr := generateSendAddr(t, netPrefix, key.NewKeyPair([]byte("this is the users seed")))
@@ -105,7 +112,6 @@ func TestWallet(t *testing.T) {
 	sumIn.Sub(&sumIn, &Fee)
 
 	var zeroPoint ristretto.Point
-
 	assert.True(t, sumIn.Equals(&zeroPoint))
 }
 
@@ -113,10 +119,14 @@ func TestReceivedTx(t *testing.T) {
 	netPrefix := byte(1)
 	fee := int64(0)
 
-	w, err := New(netPrefix, generateDecoys, fetchInputs)
+	db, err := database.New(dbPath)
+	assert.Nil(t, err)
+	defer os.RemoveAll(dbPath)
+
+	w, err := New(netPrefix, db, generateDecoys, fetchInputs)
 	assert.Nil(t, err)
 
-	tx, err := w.NewStealthTx(fee)
+	tx, err := w.NewStandardTx(fee)
 	assert.Nil(t, err)
 
 	var tenDusk ristretto.Scalar
@@ -164,7 +174,7 @@ func generateDecoys(numMixins int) transactions.Decoys {
 	return decoys
 }
 
-func fetchInputs(netPrefix byte, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
+func fetchInputs(netPrefix byte, db database.Database, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
 
 	// This function shoud store the inputs in a database
 	// Upon calling fetchInputs, we use the keyPair to get the privateKey from the
@@ -184,7 +194,6 @@ func fetchInputs(netPrefix byte, totalAmount int64, key *key.Key) ([]*transactio
 
 	for index, addr := range addresses {
 		var amount, mask ristretto.Scalar
-		fmt.Println(randAmount)
 		amount.SetBigInt(big.NewInt(randAmount))
 		mask.Rand()
 
