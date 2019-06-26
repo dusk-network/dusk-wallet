@@ -24,7 +24,7 @@ const N = 64
 var M = 1
 
 // M is the maximum number of values allowed per rangeproof
-const maxM = 32
+const maxM = 16
 
 // Proof is the constructed BulletProof
 type Proof struct {
@@ -52,6 +52,15 @@ func Prove(v []ristretto.Scalar, debug bool) (Proof, error) {
 	M = len(v)
 	if M > maxM {
 		return Proof{}, fmt.Errorf("maximum amount of values must be less than %d", maxM)
+	}
+
+	// Pad zero values until we have power of two
+	padAmount := innerproduct.DiffNextPow2(uint32(M))
+	M = M + int(padAmount)
+	for i := uint32(0); i < padAmount; i++ {
+		var zeroScalar ristretto.Scalar
+		zeroScalar.SetZero()
+		v = append(v, zeroScalar)
 	}
 
 	// commitment to values v

@@ -2,6 +2,7 @@ package vector
 
 import (
 	"errors"
+	"fmt"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )
@@ -102,7 +103,7 @@ func InnerProduct(a, b []ristretto.Scalar) (ristretto.Scalar, error) {
 	res.SetZero()
 
 	if len(a) != len(b) {
-		return res, errors.New("[Inner Product]:Length of a does not equal length of b")
+		return res, fmt.Errorf("[Inner Product]:Length of a does not equal length of b %d %d", len(a), len(b))
 	}
 
 	for i := 0; i < len(a); i++ {

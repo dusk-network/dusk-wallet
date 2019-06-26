@@ -13,12 +13,13 @@ import (
 
 func TestProveBulletProof(t *testing.T) {
 
-	p := generateProof(4, t)
+	p := generateProof(3, t)
 
 	// Verify
 	ok, err := Verify(*p)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, true, ok)
+
 }
 
 func TestEncodeDecode(t *testing.T) {

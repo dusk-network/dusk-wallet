@@ -503,3 +503,9 @@ func nextPow2(n uint) uint {
 func isPower2(n uint32) bool {
 	return (n & (n - 1)) == 0
 }
+
+func DiffNextPow2(n uint32) uint32 {
+	pow2 := nextPow2(uint(n))
+	padAmount := uint32(pow2) - n + 1
+	return padAmount
+}
