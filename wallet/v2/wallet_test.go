@@ -174,7 +174,7 @@ func generateDecoys(numMixins int) transactions.Decoys {
 	return decoys
 }
 
-func fetchInputs(netPrefix byte, db database.Database, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
+func fetchInputs(netPrefix byte, db *database.DB, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
 
 	// This function shoud store the inputs in a database
 	// Upon calling fetchInputs, we use the keyPair to get the privateKey from the

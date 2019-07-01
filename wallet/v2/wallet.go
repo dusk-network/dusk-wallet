@@ -16,17 +16,17 @@ const numMixins = 7
 
 // FetchInputs returns a slice of inputs such that Sum(Inputs)- Sum(Outputs) >= 0
 // If > 0, then a change address is created for the remaining amount
-type FetchInputs func(netPrefix byte, db database.Database, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error)
+type FetchInputs func(netPrefix byte, db *database.DB, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error)
 
 type Wallet struct {
-	db          database.Database
+	db          *database.DB
 	netPrefix   byte
 	keyPair     *key.Key
 	fetchDecoys transactions.FetchDecoys
 	fetchInputs FetchInputs
 }
 
-func New(netPrefix byte, db database.Database, fDecoys transactions.FetchDecoys, fInputs FetchInputs) (*Wallet, error) {
+func New(netPrefix byte, db *database.DB, fDecoys transactions.FetchDecoys, fInputs FetchInputs) (*Wallet, error) {
 
 	// random seed
 	seed := make([]byte, 64)
