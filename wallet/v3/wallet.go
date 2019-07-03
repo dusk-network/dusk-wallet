@@ -2,10 +2,10 @@ package wallet
 
 import (
 	"crypto/rand"
-	"dusk-wallet/database"
-	"dusk-wallet/key"
-	"dusk-wallet/mlsag"
-	"dusk-wallet/transactions/v3"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/database"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/transactions/v3"
 	"fmt"
 	"math/big"
 

@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"dusk-wallet/rangeproof"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof"
 
 	"github.com/stretchr/testify/assert"
 )

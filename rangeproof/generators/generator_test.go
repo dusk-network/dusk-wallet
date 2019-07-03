@@ -3,7 +3,7 @@ package generator_test
 import (
 	"testing"
 
-	generator "dusk-wallet/rangeproof/generators"
+	generator "gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/generators"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"

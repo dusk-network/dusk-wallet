@@ -1,8 +1,8 @@
 package transactions
 
 import (
-	"dusk-wallet/key"
-	"dusk-wallet/mlsag"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
 	"encoding/binary"
 	"io"
 

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"dusk-wallet/rangeproof/pedersen"
-	"dusk-wallet/rangeproof/vector"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/pedersen"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/vector"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"

@@ -2,9 +2,9 @@ package transactions
 
 import (
 	"bytes"
-	"dusk-wallet/key"
-	"dusk-wallet/mlsag"
-	"dusk-wallet/rangeproof"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof"
 	"encoding/binary"
 	"errors"
 	"fmt"

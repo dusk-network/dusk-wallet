@@ -1,7 +1,7 @@
 package pedersen
 
 import (
-	generator "dusk-wallet/rangeproof/generators"
+	generator "gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/generators"
 	"encoding/binary"
 	"errors"
 	"io"

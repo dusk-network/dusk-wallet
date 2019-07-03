@@ -8,10 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"dusk-wallet/rangeproof/fiatshamir"
-	"dusk-wallet/rangeproof/innerproduct"
-	"dusk-wallet/rangeproof/pedersen"
-	"dusk-wallet/rangeproof/vector"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/fiatshamir"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/innerproduct"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/pedersen"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/vector"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )

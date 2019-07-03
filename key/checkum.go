@@ -1,7 +1,7 @@
 package key
 
 import (
-	"dusk-wallet/hash"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/hash"
 	"encoding/binary"
 )
 

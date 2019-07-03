@@ -5,11 +5,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"dusk-wallet/rangeproof/vector"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/vector"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 
-	"dusk-wallet/rangeproof/pedersen"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/pedersen"
 )
 
 // Put all debug functions here

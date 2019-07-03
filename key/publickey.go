@@ -2,7 +2,7 @@ package key
 
 import (
 	"bytes"
-	"dusk-wallet/base58"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/base58"
 	"encoding/binary"
 	"errors"
 

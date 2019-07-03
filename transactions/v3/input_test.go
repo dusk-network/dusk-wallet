@@ -1,7 +1,7 @@
 package transactions
 
 import (
-	"dusk-wallet/mlsag"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
 	"testing"
 
 	"github.com/bwesterb/go-ristretto"

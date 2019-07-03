@@ -2,7 +2,7 @@ package database
 
 import (
 	"bytes"
-	"dusk-wallet/transactions/v3"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/transactions/v3"
 	"encoding/binary"
 	"errors"
 	"fmt"

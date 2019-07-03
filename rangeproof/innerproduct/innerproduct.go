@@ -7,8 +7,8 @@ import (
 	"io"
 	"math/bits"
 
-	"dusk-wallet/rangeproof/fiatshamir"
-	"dusk-wallet/rangeproof/vector"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/fiatshamir"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/vector"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )

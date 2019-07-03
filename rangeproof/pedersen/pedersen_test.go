@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"dusk-wallet/rangeproof/pedersen"
+	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof/pedersen"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
