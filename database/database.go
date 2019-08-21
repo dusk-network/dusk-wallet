@@ -2,10 +2,11 @@ package database
 
 import (
 	"bytes"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/transactions/v3"
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	"github.com/dusk-network/dusk-wallet/transactions/v3"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/syndtr/goleveldb/leveldb"

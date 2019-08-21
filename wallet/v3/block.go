@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"gitlab.dusk.network/dusk-core/dusk-wallet/transactions/v3"
+	"github.com/dusk-network/dusk-wallet/transactions/v3"
 	"encoding/binary"
 	"io"
 )

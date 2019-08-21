@@ -1,10 +1,11 @@
 package transactions
 
 import (
-	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
 	"encoding/binary"
 	"io"
+
+	"github.com/dusk-network/dusk-crypto/mlsag"
+	"github.com/dusk-network/dusk-wallet/key"
 
 	"github.com/bwesterb/go-ristretto"
 )
