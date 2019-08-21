@@ -2,12 +2,13 @@ package key
 
 import (
 	"bytes"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/base58"
+
 	"encoding/binary"
 	"errors"
 
 	ristretto "github.com/bwesterb/go-ristretto"
-	"gitlab.dusk.network/dusk-core/dusk-go/pkg/crypto"
+	"github.com/dusk-network/dusk-crypto/base58"
+	crypto "github.com/dusk-network/dusk-crypto/hash"
 )
 
 // PublicKey represents a pair of PublicSpend and PublicView keys
