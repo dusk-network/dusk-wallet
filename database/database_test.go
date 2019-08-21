@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,7 @@ import (
 func TestPutGet(t *testing.T) {
 
 	path := "mainnet"
+	defer os.RemoveAll("mainnet")
 
 	// New
 	db, err := New(path)

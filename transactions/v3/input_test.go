@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
 	"testing"
+
+	"github.com/dusk-network/dusk-crypto/mlsag"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"

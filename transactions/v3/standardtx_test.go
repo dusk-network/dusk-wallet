@@ -1,7 +1,7 @@
 package transactions
 
 import (
-	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/key"
 	"math/big"
 	"math/rand"
 	"testing"

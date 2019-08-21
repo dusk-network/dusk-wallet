@@ -2,14 +2,15 @@ package transactions
 
 import (
 	"bytes"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/rangeproof"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
+
+	"github.com/dusk-network/dusk-crypto/mlsag"
+	"github.com/dusk-network/dusk-crypto/rangeproof"
+	"github.com/dusk-network/dusk-wallet/key"
 
 	"github.com/bwesterb/go-ristretto"
 	"golang.org/x/crypto/sha3"
@@ -17,7 +18,7 @@ import (
 
 const minDecoys = 7
 const maxInputs = 2000
-const maxOutputs = 32
+const maxOutputs = 16
 
 type FetchDecoys func(numMixins int) []mlsag.PubKeys
 

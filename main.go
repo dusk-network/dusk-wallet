@@ -1,15 +1,16 @@
 package main
 
 import (
-	"gitlab.dusk.network/dusk-core/dusk-wallet/database"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/key"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/mlsag"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/transactions/v3"
-	"gitlab.dusk.network/dusk-core/dusk-wallet/wallet/v3"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strconv"
+
+	"github.com/dusk-network/dusk-crypto/mlsag"
+	"github.com/dusk-network/dusk-wallet/database"
+	"github.com/dusk-network/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/transactions/v3"
+	"github.com/dusk-network/dusk-wallet/wallet/v3"
 
 	"github.com/bwesterb/go-ristretto"
 )
