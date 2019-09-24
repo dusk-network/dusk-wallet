@@ -1,17 +1,18 @@
 package transactions
 
 import (
-	"github.com/dusk-network/dusk-wallet/key"
 	"math/big"
 	"math/rand"
 	"testing"
+
+	"github.com/dusk-network/dusk-wallet/key"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddOutputs(t *testing.T) {
-	tx, netPrefix, _ := randomStandardTx(t)
+	tx, netPrefix, _ := randomStandard(t)
 
 	Alice := key.NewKeyPair([]byte("this is the users seed"))
 	pubAddr, err := Alice.PublicKey().PublicAddress(netPrefix)
@@ -34,7 +35,7 @@ func TestAddOutputs(t *testing.T) {
 }
 
 func TestAddMaxInputs(t *testing.T) {
-	tx, _, _ := randomStandardTx(t)
+	tx, _, _ := randomStandard(t)
 
 	for i := 0; i < maxInputs; i++ {
 		err := tx.AddInput(&Input{})
@@ -94,7 +95,7 @@ func TestCalCommToZero(t *testing.T) {
 }
 
 func TestProve(t *testing.T) {
-	tx, netPrefix, _ := randomStandardTx(t)
+	tx, netPrefix, _ := randomStandard(t)
 
 	// Add three Inputs to transaction
 	addValueInputToTx(10, tx)
@@ -116,7 +117,7 @@ func TestProve(t *testing.T) {
 }
 
 func TestAddDecoys(t *testing.T) {
-	tx, _, _ := randomStandardTx(t)
+	tx, _, _ := randomStandard(t)
 
 	numInputs := 5
 	numDecoys := 4
@@ -138,7 +139,7 @@ func TestAddDecoys(t *testing.T) {
 }
 
 func TestProveRangeProof(t *testing.T) {
-	tx, netPrefix, _ := randomStandardTx(t)
+	tx, netPrefix, _ := randomStandard(t)
 
 	Alice := key.NewKeyPair([]byte("this is the users seed"))
 	pubAddr, err := Alice.PublicKey().PublicAddress(netPrefix)
@@ -163,19 +164,19 @@ func TestProveRangeProof(t *testing.T) {
 	}
 }
 
-func randomStandardTx(t *testing.T) (*StandardTx, byte, int64) {
+func randomStandard(t *testing.T) (*Standard, byte, int64) {
 	r8 := rand.Uint32() >> 16
 
 	netPrefix := byte(r8)
 	fee := rand.Int63()
 
-	tx, err := NewStandard(netPrefix, fee)
+	tx, err := NewStandard(0, netPrefix, fee)
 	assert.Nil(t, err)
 
 	return tx, netPrefix, fee
 }
 
-func addValueInputToTx(value int64, tx *StandardTx) {
+func addValueInputToTx(value int64, tx *Standard) {
 	amount := int64ToScalar(value)
 	var privKey, mask ristretto.Scalar
 	privKey.Rand()
@@ -183,7 +184,7 @@ func addValueInputToTx(value int64, tx *StandardTx) {
 	tx.AddInput(NewInput(amount, mask, privKey))
 }
 
-func addValueOutputToTx(t *testing.T, value int64, netPrefix byte, tx *StandardTx) {
+func addValueOutputToTx(t *testing.T, value int64, netPrefix byte, tx *Standard) {
 	amount := int64ToScalar(value)
 
 	Alice := key.NewKeyPair([]byte("this is the users seed"))

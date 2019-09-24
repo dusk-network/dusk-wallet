@@ -1,9 +1,10 @@
 package transactions
 
 import (
-	"github.com/dusk-network/dusk-wallet/key"
 	"math/rand"
 	"testing"
+
+	"github.com/dusk-network/dusk-wallet/key"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +40,10 @@ func TestEncryptionAmount(t *testing.T) {
 
 	pvKey, err := keyPair.PrivateView()
 	assert.Nil(t, err)
-	
+
 	encryptedAmount := EncryptAmount(amount, r, 0, *keyPair.PublicKey().PubView)
 	decryptedAmount := DecryptAmount(encryptedAmount, R, 0, *pvKey)
-	
+
 	assert.Equal(t, decryptedAmount, amount)
 }
 
@@ -51,12 +52,12 @@ func TestEncryptionMask(t *testing.T) {
 	var mask, r ristretto.Scalar
 	mask.Rand()
 	r.Rand()
-	
+
 	var R ristretto.Point
 	R.ScalarMultBase(&r)
-	
-		pvKey, err := keyPair.PrivateView()
-		assert.Nil(t, err)
+
+	pvKey, err := keyPair.PrivateView()
+	assert.Nil(t, err)
 
 	encryptedMask := EncryptMask(mask, r, 0, *keyPair.PublicKey().PubView)
 

@@ -1,8 +1,8 @@
 package transactions
 
 import (
+	"bytes"
 	"encoding/binary"
-	"io"
 
 	"github.com/dusk-network/dusk-crypto/mlsag"
 	"github.com/dusk-network/dusk-wallet/key"
@@ -18,7 +18,7 @@ type Input struct {
 	// public key can unlock the funds available at this utxo
 	PubKey  key.StealthAddress
 	privKey ristretto.Scalar
-	//PseudoCommitment refers to a commitment which commits to the same amount
+	// PseudoCommitment refers to a commitment which commits to the same amount
 	// as our `Commitment` value, however the mask value is changed. This is to be used in proving
 	// that the sumInputs-SumOutputs = 0
 	PseudoCommitment ristretto.Point
@@ -69,50 +69,39 @@ func (i *Input) Prove() error {
 	return nil
 }
 
-func (i *Input) encode(w io.Writer, encodeSignature bool) error {
-	err := binary.Write(w, binary.BigEndian, i.PubKey.P.Bytes())
-	if err != nil {
-		return err
+// Equals returns true if two inputs are the same
+func (i *Input) Equals(in *Input) bool {
+	if in == nil || i == nil {
+		return false
 	}
-	err = binary.Write(w, binary.BigEndian, i.PseudoCommitment.Bytes())
-	if err != nil {
-		return err
+
+	if !bytes.Equal(i.KeyImage.Bytes(), in.KeyImage.Bytes()) {
+		return false
 	}
-	err = binary.Write(w, binary.BigEndian, i.KeyImage.Bytes())
-	if err != nil {
-		return err
+
+	if !bytes.Equal(i.PubKey.P.Bytes(), in.PubKey.P.Bytes()) {
+		return false
 	}
-	if !encodeSignature {
-		return nil
+
+	if !bytes.Equal(i.PseudoCommitment.Bytes(), in.PseudoCommitment.Bytes()) {
+		return false
 	}
-	return i.Signature.Encode(w, false)
+
+	return i.Signature.Equals(*in.Signature, false)
 }
 
-func (i *Input) Encode(w io.Writer) error {
-	return i.encode(w, true)
-}
-
-func (i *Input) Decode(r io.Reader) error {
-	var PubKeyBytes [32]byte
-	err := binary.Read(r, binary.BigEndian, &PubKeyBytes)
-	if err != nil {
+func marshalInput(b *bytes.Buffer, in *Input) error {
+	if err := binary.Write(b, binary.BigEndian, in.KeyImage.Bytes()); err != nil {
 		return err
 	}
-	i.PubKey.P.SetBytes(&PubKeyBytes)
 
-	var PseudoBytes [32]byte
-	err = binary.Read(r, binary.BigEndian, &PseudoBytes)
-	if err != nil {
+	if err := binary.Write(b, binary.BigEndian, in.PubKey.P.Bytes()); err != nil {
 		return err
 	}
-	i.PseudoCommitment.SetBytes(&PseudoBytes)
 
-	var KeyImageBytes [32]byte
-	err = binary.Read(r, binary.BigEndian, &KeyImageBytes)
-	if err != nil {
+	if err := binary.Write(b, binary.BigEndian, in.PseudoCommitment.Bytes()); err != nil {
 		return err
 	}
-	i.KeyImage.SetBytes(&KeyImageBytes)
 
-	return i.Signature.Decode(r, false)
+	return nil
 }

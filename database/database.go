@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 
-	"github.com/dusk-network/dusk-wallet/transactions/v3"
+	"github.com/dusk-network/dusk-wallet/transactions"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -15,10 +16,13 @@ import (
 
 type DB struct {
 	storage *leveldb.DB
+	// Mutex to prevent concurrent writing/reading
+	lock sync.RWMutex
 }
 
 var (
-	inputPrefix = []byte("input")
+	inputPrefix        = []byte("input")
+	walletHeightPrefix = []byte("syncedHeight")
 )
 
 func New(path string) (*DB, error) {
@@ -30,6 +34,8 @@ func New(path string) (*DB, error) {
 }
 
 func (db *DB) Put(key, value []byte) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
 	return db.storage.Put(key, value, nil)
 }
 
@@ -64,13 +70,14 @@ func (db *DB) RemoveInput(pubkey []byte) error {
 	return db.Delete(key)
 }
 
-func (db DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.Input, int64, error) {
+func (db *DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.Input, int64, error) {
 
 	var inputs []*inputDB
 
 	var totalAmount = amount
 
 	iter := db.storage.NewIterator(util.BytesPrefix(inputPrefix), nil)
+	defer iter.Release()
 	for iter.Next() {
 		val := iter.Value()
 
@@ -102,7 +109,6 @@ func (db DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.In
 		return nil, 0, errors.New("accumulated value of all of your inputs do not account for the total amount inputted")
 	}
 
-	iter.Release()
 	err := iter.Error()
 	if err != nil {
 		return nil, 0, err
@@ -122,11 +128,68 @@ func (db DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.In
 	return tInputs, changeAmount, nil
 }
 
-func (db DB) Get(key []byte) ([]byte, error) {
+func (db *DB) FetchBalance(decryptionKey []byte) (uint64, error) {
+
+	var balance ristretto.Scalar
+	balance.SetZero()
+
+	iter := db.storage.NewIterator(util.BytesPrefix(inputPrefix), nil)
+	defer iter.Release()
+	for iter.Next() {
+		val := iter.Value()
+
+		encryptedBytes := make([]byte, len(val))
+		copy(encryptedBytes[:], val)
+
+		decryptedBytes, err := decrypt(encryptedBytes, decryptionKey)
+		if err != nil {
+			return 0, err
+		}
+		idb := &inputDB{}
+
+		buf := bytes.NewBuffer(decryptedBytes)
+		err = idb.Decode(buf)
+		if err != nil {
+			return 0, err
+		}
+
+		balance.Add(&balance, &idb.amount)
+
+	}
+
+	err := iter.Error()
+	if err != nil {
+		return 0, err
+	}
+
+	return balance.BigInt().Uint64(), nil
+}
+
+func (db *DB) GetWalletHeight() (uint64, error) {
+	heightBytes, err := db.storage.Get(walletHeightPrefix, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	height := binary.LittleEndian.Uint64(heightBytes)
+	return height, nil
+}
+
+func (db *DB) UpdateWalletHeight(newHeight uint64) error {
+	heightBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightBytes, newHeight)
+	return db.Put(walletHeightPrefix, heightBytes)
+}
+
+func (db *DB) Get(key []byte) ([]byte, error) {
+	db.lock.RLock()
+	defer db.lock.RUnlock()
 	return db.storage.Get(key, nil)
 }
 
 func (db *DB) Delete(key []byte) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
 	return db.storage.Delete(key, nil)
 }
 

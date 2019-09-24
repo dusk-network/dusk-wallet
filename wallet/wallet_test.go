@@ -1,22 +1,47 @@
 package wallet
 
 import (
+	"bytes"
 	"math/big"
-	"math/rand"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/dusk-network/dusk-crypto/mlsag"
+	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/database"
 	"github.com/dusk-network/dusk-wallet/key"
-	"github.com/dusk-network/dusk-wallet/transactions/v3"
+	"github.com/dusk-network/dusk-wallet/transactions"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"
 )
 
 var dbPath = "testDb"
+
+func TestNewWallet(t *testing.T) {
+	netPrefix := byte(1)
+
+	db, err := database.New(dbPath)
+	assert.Nil(t, err)
+	defer os.RemoveAll(dbPath)
+
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	assert.Nil(t, err)
+
+	// wrong wallet password
+	loadedWallet, err := LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "wrongPass", "wallet.dat")
+	assert.NotNil(t, err)
+
+	// correct wallet password
+	loadedWallet, err = LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	assert.Nil(t, err)
+
+	assert.Equal(t, w.PublicKey(), loadedWallet.PublicKey())
+
+	assert.Equal(t, w.consensusKeys.EdSecretKey, loadedWallet.consensusKeys.EdSecretKey)
+	assert.Equal(t, w.consensusKeys.BLSSecretKey, loadedWallet.consensusKeys.BLSSecretKey)
+	assert.True(t, bytes.Equal(w.consensusKeys.BLSPubKeyBytes, loadedWallet.consensusKeys.BLSPubKeyBytes))
+
+}
 
 func TestReceivedTx(t *testing.T) {
 	netPrefix := byte(1)
@@ -26,7 +51,7 @@ func TestReceivedTx(t *testing.T) {
 	assert.Nil(t, err)
 	defer os.RemoveAll(dbPath)
 
-	w, err := New(netPrefix, db, generateDecoys, fetchInputs)
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
 	assert.Nil(t, err)
 
 	tx, err := w.NewStandardTx(fee)
@@ -66,17 +91,18 @@ func TestCheckBlock(t *testing.T) {
 
 	var numTxs = 3 // numTxs to send to Bob
 
-	var blk Block
+	var blk block.Block
 	for i := 0; i < numTxs; i++ {
 		tx := generateStandardTx(t, *bobAddr, 20, alice)
-		blk.AddStandardTx(*tx)
+		assert.Nil(t, err)
+		blk.AddTx(tx)
 	}
 
-	count, err := bob.CheckBlockReceived(blk)
-	assert.Equal(t, uint64(numTxs), count)
+	count, err := bob.CheckWireBlockReceived(blk)
 	assert.Nil(t, err)
+	assert.Equal(t, uint64(numTxs), count)
 
-	_, err = alice.CheckBlockSpent(blk)
+	_, err = alice.CheckWireBlockSpent(blk)
 	assert.Nil(t, err)
 }
 
@@ -86,12 +112,12 @@ func generateWallet(t *testing.T, netPrefix byte, path string) *Wallet {
 	assert.Nil(t, err)
 	defer os.RemoveAll(path)
 
-	w, err := New(netPrefix, db, generateDecoys, fetchInputs)
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
 	assert.Nil(t, err)
 	return w
 }
 
-func generateStandardTx(t *testing.T, receiver key.PublicAddress, amount int64, sender *Wallet) *transactions.StandardTx {
+func generateStandardTx(t *testing.T, receiver key.PublicAddress, amount int64, sender *Wallet) *transactions.Standard {
 	tx, err := sender.NewStandardTx(0)
 	assert.Nil(t, err)
 
@@ -107,61 +133,10 @@ func generateStandardTx(t *testing.T, receiver key.PublicAddress, amount int64, 
 	return tx
 }
 
-func fetchInputs(netPrefix byte, db *database.DB, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
-
-	// This function shoud store the inputs in a database
-	// Upon calling fetchInputs, we use the keyPair to get the privateKey from the
-	// one time pubkey
-
-	var inputs []*transactions.Input
-	numInputs := 7
-
-	addresses, R := generateOutputAddress(key, netPrefix, numInputs)
-
-	rand.Seed(time.Now().Unix())
-	randAmount := rand.Int63n(totalAmount) + int64(totalAmount)/int64(numInputs) + 1 // [totalAmount/4 + 1, totalAmount*4]
-	remainder := (randAmount * int64(numInputs)) - totalAmount
-	if remainder < 0 {
-		remainder = 0
-	}
-
-	for index, addr := range addresses {
-		var amount, mask ristretto.Scalar
-		amount.SetBigInt(big.NewInt(randAmount))
-		mask.Rand()
-
-		// Fetch the privKey for each addresses
-		privKey, _ := key.DidReceiveTx(R, *addr, uint32(index))
-
-		input := transactions.NewInput(amount, mask, *privKey)
-		inputs = append(inputs, input)
-	}
-
-	return inputs, remainder, nil
-}
-
 func generateSendAddr(t *testing.T, netPrefix byte, randKeyPair *key.Key) key.PublicAddress {
 	pubAddr, err := randKeyPair.PublicKey().PublicAddress(netPrefix)
 	assert.Nil(t, err)
 	return *pubAddr
-}
-
-func generateOutputAddress(keyPair *key.Key, netPrefix byte, num int) ([]*key.StealthAddress, ristretto.Point) {
-	var res []*key.StealthAddress
-
-	sendersPubKey := keyPair.PublicKey()
-
-	var r ristretto.Scalar
-	r.Rand()
-
-	var R ristretto.Point
-	R.ScalarMultBase(&r)
-
-	for i := 0; i < num; i++ {
-		stealthAddr := sendersPubKey.StealthAddress(r, uint32(i))
-		res = append(res, stealthAddr)
-	}
-	return res, R
 }
 
 // https://www.dotnetperls.com/duplicates-go
@@ -188,25 +163,6 @@ func sliceToPoint(t *testing.T, b []byte) ristretto.Point {
 	return c
 }
 
-func generateDualKey() mlsag.PubKeys {
-	pubkeys := mlsag.PubKeys{}
-
-	var primaryKey ristretto.Point
-	primaryKey.Rand()
-	pubkeys.AddPubKey(primaryKey)
-
-	var secondaryKey ristretto.Point
-	secondaryKey.Rand()
-	pubkeys.AddPubKey(secondaryKey)
-
-	return pubkeys
-}
-
-func generateDecoys(numMixins int) []mlsag.PubKeys {
-	var pubKeys []mlsag.PubKeys
-	for i := 0; i < numMixins; i++ {
-		pubKeyVector := generateDualKey()
-		pubKeys = append(pubKeys, pubKeyVector)
-	}
-	return pubKeys
+func randReader(b []byte) (n int, err error) {
+	return len(b), nil
 }
