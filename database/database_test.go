@@ -12,11 +12,13 @@ import (
 func TestPutGet(t *testing.T) {
 
 	path := "mainnet"
-	defer os.RemoveAll("mainnet")
 
 	// New
 	db, err := New(path)
 	assert.Nil(t, err)
+
+	// Make sure to delete this dir after test
+	defer os.RemoveAll(path)
 
 	// Put
 	key := []byte("hello")
