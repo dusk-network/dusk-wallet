@@ -391,10 +391,18 @@ func marshalStandard(b *bytes.Buffer, tx *Standard) error {
 		return err
 	}
 
+	if err := writeVarInt(b, uint64(len(tx.Inputs))); err != nil {
+		return err
+	}
+
 	for _, input := range tx.Inputs {
 		if err := marshalInput(b, input); err != nil {
 			return err
 		}
+	}
+
+	if err := writeVarInt(b, uint64(len(tx.Outputs))); err != nil {
+		return err
 	}
 
 	for _, output := range tx.Outputs {
@@ -407,9 +415,47 @@ func marshalStandard(b *bytes.Buffer, tx *Standard) error {
 		return err
 	}
 
-	if err := tx.RangeProof.Encode(b, true); err != nil {
+	rpBuf := new(bytes.Buffer)
+	if err := tx.RangeProof.Encode(rpBuf, true); err != nil {
+		return err
+	}
+
+	if err := writeVarInt(b, uint64(rpBuf.Len())); err != nil {
+		return err
+	}
+
+	if _, err := rpBuf.WriteTo(b); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// This function is here to mimick the marshalling of VarInts by the dusk-blockchain repo.
+// This ensures backwards compatibility with the current testnet.
+// TODO: remove for the next iteration of testnet
+func writeVarInt(b *bytes.Buffer, v uint64) error {
+	if v < 0xfd {
+		return binary.Write(b, binary.LittleEndian, uint8(v))
+	}
+
+	if v <= 1<<16-1 {
+		if err := binary.Write(b, binary.LittleEndian, 0xfd); err != nil {
+			return err
+		}
+		return binary.Write(b, binary.LittleEndian, uint16(v))
+	}
+
+	if v <= 1<<32-1 {
+		if err := binary.Write(b, binary.LittleEndian, 0xfe); err != nil {
+			return err
+		}
+		return binary.Write(b, binary.LittleEndian, uint32(v))
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, 0xff); err != nil {
+		return err
+	}
+
+	return binary.Write(b, binary.LittleEndian, v)
 }
