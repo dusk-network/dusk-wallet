@@ -440,20 +440,20 @@ func writeVarInt(b *bytes.Buffer, v uint64) error {
 	}
 
 	if v <= 1<<16-1 {
-		if err := binary.Write(b, binary.LittleEndian, 0xfd); err != nil {
+		if err := binary.Write(b, binary.LittleEndian, uint8(0xfd)); err != nil {
 			return err
 		}
 		return binary.Write(b, binary.LittleEndian, uint16(v))
 	}
 
 	if v <= 1<<32-1 {
-		if err := binary.Write(b, binary.LittleEndian, 0xfe); err != nil {
+		if err := binary.Write(b, binary.LittleEndian, uint8(0xfe)); err != nil {
 			return err
 		}
 		return binary.Write(b, binary.LittleEndian, uint32(v))
 	}
 
-	if err := binary.Write(b, binary.LittleEndian, 0xff); err != nil {
+	if err := binary.Write(b, binary.LittleEndian, uint8(0xff)); err != nil {
 		return err
 	}
 
