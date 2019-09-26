@@ -88,6 +88,10 @@ func marshalStake(b *bytes.Buffer, s *Stake) error {
 		return err
 	}
 
+	if err := writeVarInt(b, uint64(len(s.PubKeyBLS))); err != nil {
+		return err
+	}
+
 	if err := binary.Write(b, binary.BigEndian, s.PubKeyBLS); err != nil {
 		return err
 	}

@@ -133,6 +133,10 @@ func marshalCoinbase(b *bytes.Buffer, c *Coinbase) error {
 		return err
 	}
 
+	if err := writeVarInt(b, uint64(len(c.Proof))); err != nil {
+		return err
+	}
+
 	if err := binary.Write(b, binary.BigEndian, c.Proof); err != nil {
 		return err
 	}
