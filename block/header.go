@@ -98,7 +98,7 @@ func marshalHashable(b *bytes.Buffer, h *Header) error {
 		return err
 	}
 
-	if err := binary.Write(b, binary.LittleEndian, h.Timestamp); err != nil {
+	if err := binary.Write(b, binary.LittleEndian, uint64(h.Timestamp)); err != nil {
 		return err
 	}
 
