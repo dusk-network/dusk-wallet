@@ -15,7 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dbPath = "testDb"
+const dbPath = "testDb"
+const walletPath = "wallet.dat"
 
 func TestNewWallet(t *testing.T) {
 	netPrefix := byte(1)
@@ -23,16 +24,17 @@ func TestNewWallet(t *testing.T) {
 	db, err := database.New(dbPath)
 	assert.Nil(t, err)
 	defer os.RemoveAll(dbPath)
+	defer os.Remove(walletPath)
 
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 
 	// wrong wallet password
-	loadedWallet, err := LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "wrongPass", "wallet.dat")
+	loadedWallet, err := LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "wrongPass", walletPath)
 	assert.NotNil(t, err)
 
 	// correct wallet password
-	loadedWallet, err = LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	loadedWallet, err = LoadFromFile(netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 
 	assert.Equal(t, w.PublicKey(), loadedWallet.PublicKey())
@@ -50,8 +52,9 @@ func TestReceivedTx(t *testing.T) {
 	db, err := database.New(dbPath)
 	assert.Nil(t, err)
 	defer os.RemoveAll(dbPath)
+	defer os.Remove(walletPath)
 
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 
 	tx, err := w.NewStandardTx(fee)
@@ -86,6 +89,7 @@ func TestCheckBlock(t *testing.T) {
 
 	alice := generateWallet(t, netPrefix, "alice")
 	bob := generateWallet(t, netPrefix, "bob")
+	defer os.Remove(walletPath)
 	bobAddr, err := bob.keyPair.PublicKey().PublicAddress(netPrefix)
 	assert.Nil(t, err)
 
@@ -98,11 +102,11 @@ func TestCheckBlock(t *testing.T) {
 		blk.AddTx(tx)
 	}
 
-	count, err := bob.CheckWireBlockReceived(blk)
+	count, _, err := bob.CheckWireBlockReceived(blk, true)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(numTxs), count)
 
-	_, err = alice.CheckWireBlockSpent(blk)
+	_, err = alice.CheckWireBlockSpent(blk, true)
 	assert.Nil(t, err)
 }
 
@@ -112,7 +116,8 @@ func generateWallet(t *testing.T, netPrefix byte, path string) *Wallet {
 	assert.Nil(t, err)
 	defer os.RemoveAll(path)
 
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", "wallet.dat")
+	os.Remove(walletPath)
+	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 	return w
 }
