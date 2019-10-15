@@ -6,9 +6,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/big"
+	"os"
 
 	"github.com/dusk-network/dusk-crypto/mlsag"
 	"github.com/dusk-network/dusk-wallet/block"
@@ -27,6 +29,8 @@ const numMixins = 7
 
 // DUSK is one whole unit of DUSK.
 const DUSK = uint64(100000000)
+
+var ErrSeedFileExists = fmt.Errorf("wallet seed file already exists")
 
 // FetchInputs returns a slice of inputs such that Sum(Inputs)- Sum(Outputs) >= 0
 // If > 0, then a change address is created for the remaining amount
@@ -171,34 +175,37 @@ func (w *Wallet) NewBidTx(fee int64, lockTime uint64, amount ristretto.Scalar) (
 	return tx, nil
 }
 
-func (w *Wallet) CheckWireBlock(blk block.Block) (uint64, uint64, error) {
-	spentCount, err := w.CheckWireBlockSpent(blk)
+func (w *Wallet) CheckWireBlock(blk block.Block, update bool) (uint64, uint64, error) {
+	spentCount, err := w.CheckWireBlockSpent(blk, update)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	receivedCount, err := w.CheckWireBlockReceived(blk)
+	receivedCount, _, err := w.CheckWireBlockReceived(blk, update)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	err = w.UpdateWalletHeight(blk.Header.Height + 1)
-	if err != nil {
-		return 0, 0, err
+	if update {
+		err = w.UpdateWalletHeight(blk.Header.Height + 1)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
+
 	return spentCount, receivedCount, nil
 }
 
 // CheckWireBlockSpent checks if the block has any outputs spent by this wallet
 // Returns the number of txs that the sender spent funds in
-func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
+func (w *Wallet) CheckWireBlockSpent(blk block.Block, update bool) (uint64, error) {
 
 	var totalSpentCount uint64
 
 	txInCheckers := NewTxInChecker(blk)
 
 	for _, txchecker := range txInCheckers {
-		spentCount, err := w.scanInputs(txchecker)
+		spentCount, err := w.scanInputs(txchecker, update)
 		if err != nil {
 			return spentCount, err
 		}
@@ -208,7 +215,7 @@ func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 	return totalSpentCount, nil
 }
 
-func (w *Wallet) scanInputs(txChecker TxInChecker) (uint64, error) {
+func (w *Wallet) scanInputs(txChecker TxInChecker, update bool) (uint64, error) {
 
 	var didSpendFunds uint64
 
@@ -221,9 +228,13 @@ func (w *Wallet) scanInputs(txChecker TxInChecker) (uint64, error) {
 			return didSpendFunds, err
 		}
 
-		err = w.db.RemoveInput(pubKey)
-		if err != nil {
-			return didSpendFunds, err
+		didSpendFunds++
+
+		if update {
+			err = w.db.RemoveInput(pubKey, keyImage)
+			if err != nil {
+				return didSpendFunds, err
+			}
 		}
 	}
 	return didSpendFunds, nil
@@ -231,35 +242,38 @@ func (w *Wallet) scanInputs(txChecker TxInChecker) (uint64, error) {
 
 // CheckWireBlockReceived checks if the wire block has transactions for this wallet
 // Returns the number of tx's that the reciever recieved funds in
-func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
+func (w *Wallet) CheckWireBlockReceived(blk block.Block, update bool) (uint64, uint64, error) {
 
 	var totalReceivedCount uint64
 
 	txCheckers := NewTxOutChecker(blk)
+	var totalBalance uint64
 	for _, txchecker := range txCheckers {
-		receivedCount, err := w.scanOutputs(txchecker)
+		receivedCount, balance, err := w.scanOutputs(txchecker, update)
 		if err != nil {
-			return receivedCount, err
+			return receivedCount, totalBalance, err
 		}
 		totalReceivedCount += receivedCount
+		totalBalance += balance
 	}
 
-	return totalReceivedCount, nil
+	return totalReceivedCount, totalBalance, nil
 }
 
 // scans the outputs of one transaction
-func (w *Wallet) scanOutputs(txchecker TxOutChecker) (uint64, error) {
+func (w *Wallet) scanOutputs(txchecker TxOutChecker, update bool) (uint64, uint64, error) {
 
 	privView, err := w.keyPair.PrivateView()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	privSpend, err := w.keyPair.PrivateSpend()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	var didReceiveFunds uint64
+	var totalAmount uint64
 
 	for i, output := range txchecker.Outputs {
 		privKey, ok := w.keyPair.DidReceiveTx(txchecker.R, output.PubKey, uint32(i))
@@ -278,23 +292,27 @@ func (w *Wallet) scanOutputs(txchecker TxOutChecker) (uint64, error) {
 			mask = transactions.DecryptMask(output.EncryptedMask, txchecker.R, uint32(i), *privView)
 		}
 
-		err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey)
-		if err != nil {
-			return didReceiveFunds, err
-		}
+		totalAmount += amount.BigInt().Uint64()
 
-		// cache the keyImage, so we can quickly check whether our input was spent
-		var pubKey ristretto.Point
-		pubKey.ScalarMultBase(privKey)
-		keyImage := mlsag.CalculateKeyImage(*privKey, pubKey)
+		if update {
+			err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey)
+			if err != nil {
+				return didReceiveFunds, totalAmount, err
+			}
 
-		err = w.db.Put(keyImage.Bytes(), output.PubKey.P.Bytes())
-		if err != nil {
-			return didReceiveFunds, err
+			// cache the keyImage, so we can quickly check whether our input was spent
+			var pubKey ristretto.Point
+			pubKey.ScalarMultBase(privKey)
+			keyImage := mlsag.CalculateKeyImage(*privKey, pubKey)
+
+			err = w.db.Put(keyImage.Bytes(), output.PubKey.P.Bytes())
+			if err != nil {
+				return didReceiveFunds, totalAmount, err
+			}
 		}
 	}
 
-	return didReceiveFunds, nil
+	return didReceiveFunds, totalAmount, nil
 }
 
 // AddInputs adds up the total outputs and fee then fetches inputs to consolidate this
@@ -357,18 +375,18 @@ func (w *Wallet) Sign(tx SignableTx) error {
 		if err != nil {
 			return err
 		}
-		w.db.RemoveInput(pubKey)
+		w.db.RemoveInput(pubKey, input.KeyImage.Bytes())
 	}
 	return nil
 }
 
-func (w *Wallet) Balance() (float64, error) {
+func (w *Wallet) Balance() (uint64, error) {
 	privSpend, err := w.keyPair.PrivateSpend()
 	if err != nil {
 		return 0, err
 	}
 	balanceInt, err := w.db.FetchBalance(privSpend.Bytes())
-	return float64(float64(balanceInt) / float64(DUSK)), nil
+	return balanceInt, nil
 }
 
 func (w *Wallet) GetSavedHeight() (uint64, error) {
@@ -406,6 +424,10 @@ func (w *Wallet) PrivateSpend() ([]byte, error) {
 
 // Save saves the seed to a dat file
 func saveSeed(seed []byte, password string, file string) error {
+	// Overwriting a seed file may cause loss of funds
+	if _, err := os.Stat(file); err == nil {
+		return ErrSeedFileExists
+	}
 
 	digest := sha3.Sum256([]byte(password))
 
