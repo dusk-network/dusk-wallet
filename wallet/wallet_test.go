@@ -110,6 +110,36 @@ func TestCheckBlock(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestSpendLockedInputs(t *testing.T) {
+	netPrefix := byte(1)
+	alice := generateWallet(t, netPrefix, "alice")
+	defer os.Remove(walletPath)
+
+	var blk block.Block
+	tx := generateStakeTx(t, 20, alice, 100000)
+	blk.AddTx(tx)
+
+	_, _, err := alice.CheckWireBlockReceived(blk, true)
+	assert.Nil(t, err)
+
+	// Attempt to send a Standard tx with this single input we received.
+	// Set our FetchInputs function to a proper one, so that we actually
+	// check the database.
+	alice.fetchInputs = fetchInputs
+	standard, err := alice.NewStandardTx(100)
+	assert.NoError(t, err)
+
+	var amount ristretto.Scalar
+	amount.SetBigInt(big.NewInt(5000))
+
+	pubAddr, err := alice.keyPair.PublicKey().PublicAddress(netPrefix)
+	assert.NoError(t, err)
+	assert.NoError(t, standard.AddOutput(*pubAddr, amount))
+
+	// Should fail
+	assert.Error(t, alice.Sign(standard))
+}
+
 func generateWallet(t *testing.T, netPrefix byte, path string) *Wallet {
 
 	db, err := database.New(path)
@@ -130,6 +160,19 @@ func generateStandardTx(t *testing.T, receiver key.PublicAddress, amount int64, 
 	duskAmount.SetBigInt(big.NewInt(amount))
 
 	err = tx.AddOutput(receiver, duskAmount)
+	assert.Nil(t, err)
+
+	err = sender.Sign(tx)
+	assert.Nil(t, err)
+
+	return tx
+}
+
+func generateStakeTx(t *testing.T, amount int64, sender *Wallet, lockTime uint64) *transactions.Stake {
+	var duskAmount ristretto.Scalar
+	duskAmount.SetBigInt(big.NewInt(amount))
+
+	tx, err := sender.NewStakeTx(0, lockTime, duskAmount)
 	assert.Nil(t, err)
 
 	err = sender.Sign(tx)
@@ -170,4 +213,14 @@ func sliceToPoint(t *testing.T, b []byte) ristretto.Point {
 
 func randReader(b []byte) (n int, err error) {
 	return len(b), nil
+}
+
+func fetchInputs(netPrefix byte, db *database.DB, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {
+	// Fetch all inputs from database that are >= totalAmount
+	// returns error if inputs do not add up to total amount
+	privSpend, err := key.PrivateSpend()
+	if err != nil {
+		return nil, 0, err
+	}
+	return db.FetchInputs(privSpend.Bytes(), totalAmount)
 }
