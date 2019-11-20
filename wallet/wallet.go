@@ -191,6 +191,15 @@ func (w *Wallet) CheckWireBlock(blk block.Block, update bool) (uint64, uint64, e
 		if err != nil {
 			return 0, 0, err
 		}
+
+		privSpend, err := w.keyPair.PrivateSpend()
+		if err != nil {
+			return 0, 0, err
+		}
+
+		if err := w.db.UpdateLockedInputs(privSpend.Bytes(), blk.Header.Height); err != nil {
+			return 0, 0, err
+		}
 	}
 
 	return spentCount, receivedCount, nil
@@ -295,7 +304,7 @@ func (w *Wallet) scanOutputs(txchecker TxOutChecker, update bool) (uint64, uint6
 		totalAmount += amount.BigInt().Uint64()
 
 		if update {
-			err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey)
+			err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey, txchecker.LockTime)
 			if err != nil {
 				return didReceiveFunds, totalAmount, err
 			}

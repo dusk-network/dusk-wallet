@@ -8,11 +8,12 @@ import (
 )
 
 // TxOutChecker holds all of the necessary data
-// in order to check if an oputput was sent to a specified user
+// in order to check if an output was sent to a specified user
 type TxOutChecker struct {
 	encryptedValues bool
 	R               ristretto.Point
 	Outputs         transactions.Outputs
+	LockTime        uint64
 }
 
 func NewTxOutChecker(blk block.Block) []TxOutChecker {
@@ -32,6 +33,8 @@ func NewTxOutChecker(blk block.Block) []TxOutChecker {
 
 		txchecker.Outputs = tx.StandardTx().Outputs
 		txcheckers = append(txcheckers, txchecker)
+
+		txchecker.LockTime = getLockTime(tx)
 	}
 	return txcheckers
 }
@@ -50,5 +53,23 @@ func shouldEncryptValues(tx wiretx.Transaction) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+func getLockTime(tx wiretx.Transaction) uint64 {
+	switch tx.Type() {
+	case wiretx.StandardType, wiretx.CoinbaseType:
+		return 0
+	case wiretx.BidType:
+		bid := tx.(*wiretx.Bid)
+		return bid.Lock
+	case wiretx.StakeType:
+		stake := tx.(*wiretx.Stake)
+		return stake.Lock
+	case wiretx.TimelockType:
+		tl := tx.(*wiretx.Timelock)
+		return tl.Lock
+	default:
+		return 0
 	}
 }
