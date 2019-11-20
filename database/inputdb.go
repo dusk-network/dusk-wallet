@@ -9,7 +9,7 @@ import (
 
 type inputDB struct {
 	amount, mask, privKey ristretto.Scalar
-	lockHeight            uint64
+	unlockHeight          uint64
 }
 
 func (idb *inputDB) Decode(r io.Reader) error {
@@ -31,8 +31,8 @@ func (idb *inputDB) Decode(r io.Reader) error {
 	}
 	idb.privKey.SetBytes(&privKeyBytes)
 
-	var lockHeight uint64
-	err = binary.Read(r, binary.LittleEndian, lockHeight)
+	var unlockHeight uint64
+	err = binary.Read(r, binary.LittleEndian, unlockHeight)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (idb *inputDB) Encode(w io.Writer) error {
 		return err
 	}
 
-	return binary.Write(w, binary.LittleEndian, idb.lockHeight)
+	return binary.Write(w, binary.LittleEndian, idb.unlockHeight)
 }
 
 func read32Bytes(r io.Reader) ([32]byte, error) {

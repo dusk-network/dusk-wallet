@@ -37,14 +37,14 @@ func (db *DB) Put(key, value []byte) error {
 	return db.storage.Put(key, value, nil)
 }
 
-func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, lockHeight uint64) error {
+func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, unlockHeight uint64) error {
 
 	buf := &bytes.Buffer{}
 	idb := &inputDB{
-		amount:     amount,
-		mask:       mask,
-		privKey:    privKey,
-		lockHeight: lockHeight,
+		amount:       amount,
+		mask:         mask,
+		privKey:      privKey,
+		unlockHeight: unlockHeight,
 	}
 
 	if err := idb.Encode(buf); err != nil {
@@ -98,7 +98,7 @@ func (db *DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.I
 		}
 
 		// Only add unlocked inputs
-		if idb.lockHeight == 0 {
+		if idb.unlockHeight == 0 {
 			inputs = append(inputs, idb)
 
 			// Check if we need more inputs
@@ -189,8 +189,8 @@ func (db *DB) UpdateLockedInputs(decryptionKey []byte, height uint64) error {
 			return err
 		}
 
-		if idb.lockHeight != 0 && idb.lockHeight <= height {
-			idb.lockHeight = 0
+		if idb.unlockHeight != 0 && idb.unlockHeight <= height {
+			idb.unlockHeight = 0
 			// Overwrite input
 			buf := new(bytes.Buffer)
 			if err := idb.Encode(buf); err != nil {
