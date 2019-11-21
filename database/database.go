@@ -132,9 +132,11 @@ func (db *DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.I
 	return tInputs, changeAmount, nil
 }
 
-func (db *DB) FetchBalance(decryptionKey []byte) (uint64, error) {
-	var balance ristretto.Scalar
-	balance.SetZero()
+func (db *DB) FetchBalance(decryptionKey []byte) (uint64, uint64, error) {
+	var unlockedBalance ristretto.Scalar
+	unlockedBalance.SetZero()
+	var lockedBalance ristretto.Scalar
+	lockedBalance.SetZero()
 
 	iter := db.storage.NewIterator(util.BytesPrefix(inputPrefix), nil)
 	defer iter.Release()
@@ -146,26 +148,30 @@ func (db *DB) FetchBalance(decryptionKey []byte) (uint64, error) {
 
 		decryptedBytes, err := decrypt(encryptedBytes, decryptionKey)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 		idb := &inputDB{}
 
 		buf := bytes.NewBuffer(decryptedBytes)
 		err = idb.Decode(buf)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
-		balance.Add(&balance, &idb.amount)
+		if idb.unlockHeight == 0 {
+			unlockedBalance.Add(&unlockedBalance, &idb.amount)
+			continue
+		}
 
+		lockedBalance.Add(&lockedBalance, &idb.amount)
 	}
 
 	err := iter.Error()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	return balance.BigInt().Uint64(), nil
+	return unlockedBalance.BigInt().Uint64(), lockedBalance.BigInt().Uint64(), nil
 }
 
 // UpdateLockedInputs will set the lockheight for an input to 0 if the
