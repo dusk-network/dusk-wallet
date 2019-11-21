@@ -37,19 +37,17 @@ func (db *DB) Put(key, value []byte) error {
 	return db.storage.Put(key, value, nil)
 }
 
-func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privkey ristretto.Scalar) error {
+func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, unlockHeight uint64) error {
 
 	buf := &bytes.Buffer{}
-	err := binary.Write(buf, binary.BigEndian, amount.Bytes())
-	if err != nil {
-		return err
+	idb := &inputDB{
+		amount:       amount,
+		mask:         mask,
+		privKey:      privKey,
+		unlockHeight: unlockHeight,
 	}
-	err = binary.Write(buf, binary.BigEndian, mask.Bytes())
-	if err != nil {
-		return err
-	}
-	err = binary.Write(buf, binary.BigEndian, privkey.Bytes())
-	if err != nil {
+
+	if err := idb.Encode(buf); err != nil {
 		return err
 	}
 
@@ -99,12 +97,15 @@ func (db *DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.I
 			return nil, 0, err
 		}
 
-		inputs = append(inputs, idb)
+		// Only add unlocked inputs
+		if idb.unlockHeight == 0 {
+			inputs = append(inputs, idb)
 
-		// Check if we need more inputs
-		totalAmount = totalAmount - idb.amount.BigInt().Int64()
-		if totalAmount <= 0 {
-			break
+			// Check if we need more inputs
+			totalAmount = totalAmount - idb.amount.BigInt().Int64()
+			if totalAmount <= 0 {
+				break
+			}
 		}
 	}
 
@@ -131,10 +132,11 @@ func (db *DB) FetchInputs(decryptionKey []byte, amount int64) ([]*transactions.I
 	return tInputs, changeAmount, nil
 }
 
-func (db *DB) FetchBalance(decryptionKey []byte) (uint64, error) {
-
-	var balance ristretto.Scalar
-	balance.SetZero()
+func (db *DB) FetchBalance(decryptionKey []byte) (uint64, uint64, error) {
+	var unlockedBalance ristretto.Scalar
+	unlockedBalance.SetZero()
+	var lockedBalance ristretto.Scalar
+	lockedBalance.SetZero()
 
 	iter := db.storage.NewIterator(util.BytesPrefix(inputPrefix), nil)
 	defer iter.Release()
@@ -146,26 +148,71 @@ func (db *DB) FetchBalance(decryptionKey []byte) (uint64, error) {
 
 		decryptedBytes, err := decrypt(encryptedBytes, decryptionKey)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 		idb := &inputDB{}
 
 		buf := bytes.NewBuffer(decryptedBytes)
 		err = idb.Decode(buf)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
-		balance.Add(&balance, &idb.amount)
+		if idb.unlockHeight == 0 {
+			unlockedBalance.Add(&unlockedBalance, &idb.amount)
+			continue
+		}
 
+		lockedBalance.Add(&lockedBalance, &idb.amount)
 	}
 
 	err := iter.Error()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	return balance.BigInt().Uint64(), nil
+	return unlockedBalance.BigInt().Uint64(), lockedBalance.BigInt().Uint64(), nil
+}
+
+// UpdateLockedInputs will set the lockheight for an input to 0 if the
+// given `height` is greater or equal than the input lockheight,
+// signifying that this input is unlocked.
+func (db *DB) UpdateLockedInputs(decryptionKey []byte, height uint64) error {
+	iter := db.storage.NewIterator(util.BytesPrefix(inputPrefix), nil)
+	defer iter.Release()
+	for iter.Next() {
+		val := iter.Value()
+
+		decryptedBytes, err := decrypt(val, decryptionKey)
+		if err != nil {
+			return err
+		}
+		idb := &inputDB{}
+
+		buf := bytes.NewBuffer(decryptedBytes)
+		err = idb.Decode(buf)
+		if err != nil {
+			return err
+		}
+
+		if idb.unlockHeight != 0 && idb.unlockHeight <= height {
+			idb.unlockHeight = 0
+			// Overwrite input
+			buf := new(bytes.Buffer)
+			if err := idb.Encode(buf); err != nil {
+				return err
+			}
+
+			encryptedBytes, err := encrypt(buf.Bytes(), decryptionKey)
+			if err != nil {
+				return err
+			}
+
+			db.Put(iter.Key(), encryptedBytes)
+		}
+	}
+
+	return iter.Error()
 }
 
 func (db *DB) GetWalletHeight() (uint64, error) {

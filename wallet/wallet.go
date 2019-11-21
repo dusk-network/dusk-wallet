@@ -176,6 +176,16 @@ func (w *Wallet) NewBidTx(fee int64, lockTime uint64, amount ristretto.Scalar) (
 }
 
 func (w *Wallet) CheckWireBlock(blk block.Block, update bool) (uint64, uint64, error) {
+	// Ensure this block is at the height we expect it to be
+	walletHeight, err := w.GetSavedHeight()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if blk.Header.Height != walletHeight {
+		return 0, 0, errors.New("last seen block does not precede provided block")
+	}
+
 	spentCount, err := w.CheckWireBlockSpent(blk, update)
 	if err != nil {
 		return 0, 0, err
@@ -189,6 +199,15 @@ func (w *Wallet) CheckWireBlock(blk block.Block, update bool) (uint64, uint64, e
 	if update {
 		err = w.UpdateWalletHeight(blk.Header.Height + 1)
 		if err != nil {
+			return 0, 0, err
+		}
+
+		privSpend, err := w.keyPair.PrivateSpend()
+		if err != nil {
+			return 0, 0, err
+		}
+
+		if err := w.db.UpdateLockedInputs(privSpend.Bytes(), blk.Header.Height); err != nil {
 			return 0, 0, err
 		}
 	}
@@ -295,7 +314,7 @@ func (w *Wallet) scanOutputs(txchecker TxOutChecker, update bool) (uint64, uint6
 		totalAmount += amount.BigInt().Uint64()
 
 		if update {
-			err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey)
+			err := w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, *privKey, txchecker.LockTime)
 			if err != nil {
 				return didReceiveFunds, totalAmount, err
 			}
@@ -380,13 +399,13 @@ func (w *Wallet) Sign(tx SignableTx) error {
 	return nil
 }
 
-func (w *Wallet) Balance() (uint64, error) {
+func (w *Wallet) Balance() (uint64, uint64, error) {
 	privSpend, err := w.keyPair.PrivateSpend()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	balanceInt, err := w.db.FetchBalance(privSpend.Bytes())
-	return balanceInt, nil
+	unlockedBalance, lockedBalance, err := w.db.FetchBalance(privSpend.Bytes())
+	return unlockedBalance, lockedBalance, nil
 }
 
 func (w *Wallet) GetSavedHeight() (uint64, error) {
