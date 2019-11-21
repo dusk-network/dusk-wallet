@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"github.com/bwesterb/go-ristretto"
-	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/transactions"
 	wiretx "github.com/dusk-network/dusk-wallet/transactions"
 )
@@ -16,10 +15,10 @@ type TxOutChecker struct {
 	LockTime        uint64
 }
 
-func NewTxOutChecker(blk block.Block) []TxOutChecker {
-	txcheckers := make([]TxOutChecker, 0, len(blk.Txs))
+func NewTxOutChecker(txs []transactions.Transaction) []TxOutChecker {
+	txcheckers := make([]TxOutChecker, 0, len(txs))
 
-	for _, tx := range blk.Txs {
+	for _, tx := range txs {
 		txchecker := TxOutChecker{
 			encryptedValues: shouldEncryptValues(tx),
 		}

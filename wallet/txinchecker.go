@@ -1,8 +1,6 @@
 package wallet
 
-import (
-	"github.com/dusk-network/dusk-wallet/block"
-)
+import "github.com/dusk-network/dusk-wallet/transactions"
 
 type keyImage []byte
 
@@ -12,10 +10,10 @@ type TxInChecker struct {
 	keyImages []keyImage
 }
 
-func NewTxInChecker(blk block.Block) []TxInChecker {
-	txcheckers := make([]TxInChecker, 0, len(blk.Txs))
+func NewTxInChecker(txs []transactions.Transaction) []TxInChecker {
+	txcheckers := make([]TxInChecker, 0, len(txs))
 
-	for _, tx := range blk.Txs {
+	for _, tx := range txs {
 		keyImages := make([]keyImage, 0)
 		for _, input := range tx.StandardTx().Inputs {
 			keyImages = append(keyImages, input.KeyImage.Bytes())
