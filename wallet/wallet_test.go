@@ -102,11 +102,11 @@ func TestCheckBlock(t *testing.T) {
 		blk.AddTx(tx)
 	}
 
-	count, _, err := bob.CheckWireBlockReceived(blk, true)
+	count, err := bob.CheckWireBlockReceived(blk)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(numTxs), count)
 
-	_, err = alice.CheckWireBlockSpent(blk, true)
+	_, err = alice.CheckWireBlockSpent(blk)
 	assert.Nil(t, err)
 }
 
@@ -119,7 +119,7 @@ func TestSpendLockedInputs(t *testing.T) {
 	tx := generateStakeTx(t, 20, alice, 100000)
 	blk.AddTx(tx)
 
-	_, _, err := alice.CheckWireBlockReceived(blk, true)
+	_, err := alice.CheckWireBlockReceived(blk)
 	assert.Nil(t, err)
 
 	// Attempt to send a Standard tx with this single input we received.
