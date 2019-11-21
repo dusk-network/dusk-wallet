@@ -25,16 +25,26 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 	var totalReceivedCount uint64
 
 	for _, tx := range blk.Txs {
+		var didReceiveFunds bool
 		for i, output := range tx.StandardTx().Outputs {
 			privKey, ok := w.keyPair.DidReceiveTx(tx.StandardTx().R, output.PubKey, uint32(i))
 			if !ok {
 				continue
 			}
 
-			totalReceivedCount++
+			didReceiveFunds = true
 
-			w.writeOutputToDatabase(*output, privView, privSpend, *privKey, tx, i)
-			w.writeKeyImageToDatabase(*output, *privKey)
+			if err := w.writeOutputToDatabase(*output, privView, privSpend, *privKey, tx, i); err != nil {
+				return 0, err
+			}
+
+			if err := w.writeKeyImageToDatabase(*output, *privKey); err != nil {
+				return 0, err
+			}
+		}
+
+		if didReceiveFunds {
+			totalReceivedCount++
 		}
 	}
 
