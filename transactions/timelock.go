@@ -76,6 +76,10 @@ func (tl *Timelock) Equals(t Transaction) bool {
 	return true
 }
 
+func (tl *Timelock) UnlockHeight() uint64 {
+	return tl.Lock
+}
+
 func marshalTimelock(b *bytes.Buffer, tl *Timelock) error {
 	if err := marshalStandard(b, tl.Standard); err != nil {
 		return err

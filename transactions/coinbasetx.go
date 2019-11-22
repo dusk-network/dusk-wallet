@@ -120,6 +120,10 @@ func (s *Coinbase) Equals(t Transaction) bool {
 	return true
 }
 
+func (s *Coinbase) UnlockHeight() uint64 {
+	return 0
+}
+
 func marshalCoinbase(b *bytes.Buffer, c *Coinbase) error {
 	if err := binary.Write(b, binary.LittleEndian, c.TxType); err != nil {
 		return err

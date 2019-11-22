@@ -79,6 +79,10 @@ func (s *Stake) Equals(t Transaction) bool {
 	return true
 }
 
+func (s *Stake) UnlockHeight() uint64 {
+	return s.Lock
+}
+
 func marshalStake(b *bytes.Buffer, s *Stake) error {
 	if err := marshalTimelock(b, s.Timelock); err != nil {
 		return err

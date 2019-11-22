@@ -172,6 +172,10 @@ func (s *Standard) ProveRangeProof() error {
 	return nil
 }
 
+func (s *Standard) UnlockHeight() uint64 {
+	return 0
+}
+
 func calculateCommToZero(inputs []*Input, outputs []*Output) {
 
 	// Aggregate mask values in each outputs commitment
