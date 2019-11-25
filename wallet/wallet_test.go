@@ -3,6 +3,7 @@ package wallet
 import (
 	"bytes"
 	"math/big"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestNewWallet(t *testing.T) {
 	defer os.RemoveAll(dbPath)
 	defer os.Remove(walletPath)
 
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
+	w, err := New(rand.Read, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 
 	// wrong wallet password
@@ -54,7 +55,7 @@ func TestReceivedTx(t *testing.T) {
 	defer os.RemoveAll(dbPath)
 	defer os.Remove(walletPath)
 
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
+	w, err := New(rand.Read, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
 	assert.Nil(t, err)
 
 	tx, err := w.NewStandardTx(fee)
@@ -87,9 +88,10 @@ func TestReceivedTx(t *testing.T) {
 func TestCheckBlock(t *testing.T) {
 	netPrefix := byte(1)
 
-	alice := generateWallet(t, netPrefix, "alice")
-	bob := generateWallet(t, netPrefix, "bob")
-	defer os.Remove(walletPath)
+	alice := generateWallet(t, netPrefix, "alice", "alice.dat")
+	bob := generateWallet(t, netPrefix, "bob", "bob.dat")
+	defer os.Remove("alice.dat")
+	defer os.Remove("bob.dat")
 	bobAddr, err := bob.keyPair.PublicKey().PublicAddress(netPrefix)
 	assert.Nil(t, err)
 
@@ -102,24 +104,24 @@ func TestCheckBlock(t *testing.T) {
 		blk.AddTx(tx)
 	}
 
-	count, _, err := bob.CheckWireBlockReceived(blk, true)
+	count, err := bob.CheckWireBlockReceived(blk)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(numTxs), count)
 
-	_, err = alice.CheckWireBlockSpent(blk, true)
+	_, err = alice.CheckWireBlockSpent(blk)
 	assert.Nil(t, err)
 }
 
 func TestSpendLockedInputs(t *testing.T) {
 	netPrefix := byte(1)
-	alice := generateWallet(t, netPrefix, "alice")
+	alice := generateWallet(t, netPrefix, "alice", walletPath)
 	defer os.Remove(walletPath)
 
 	var blk block.Block
 	tx := generateStakeTx(t, 20, alice, 100000)
 	blk.AddTx(tx)
 
-	_, _, err := alice.CheckWireBlockReceived(blk, true)
+	_, err := alice.CheckWireBlockReceived(blk)
 	assert.Nil(t, err)
 
 	// Attempt to send a Standard tx with this single input we received.
@@ -140,14 +142,38 @@ func TestSpendLockedInputs(t *testing.T) {
 	assert.Error(t, alice.Sign(standard))
 }
 
-func generateWallet(t *testing.T, netPrefix byte, path string) *Wallet {
+func TestCheckUnconfirmedBalance(t *testing.T) {
+	netPrefix := byte(1)
 
+	alice := generateWallet(t, netPrefix, "alice", "alice.dat")
+	bob := generateWallet(t, netPrefix, "bob", "bob.dat")
+	defer os.Remove("alice.dat")
+	defer os.Remove("bob.dat")
+	bobAddr, err := bob.keyPair.PublicKey().PublicAddress(netPrefix)
+	assert.Nil(t, err)
+
+	var numTxs = 3          // numTxs to send to Bob
+	var amount = int64(500) // amount to send for each tx
+
+	txs := make([]transactions.Transaction, 0, numTxs)
+	for i := 0; i < numTxs; i++ {
+		tx := generateStandardTx(t, *bobAddr, amount, alice)
+		assert.Nil(t, err)
+		txs = append(txs, tx)
+	}
+
+	balance, err := bob.CheckUnconfirmedBalance(txs)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(int64(numTxs)*amount), balance)
+}
+
+func generateWallet(t *testing.T, netPrefix byte, path string, wPath string) *Wallet {
 	db, err := database.New(path)
 	assert.Nil(t, err)
 	defer os.RemoveAll(path)
 
-	os.Remove(walletPath)
-	w, err := New(randReader, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
+	os.Remove(wPath)
+	w, err := New(rand.Read, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", wPath)
 	assert.Nil(t, err)
 	return w
 }
@@ -209,10 +235,6 @@ func sliceToPoint(t *testing.T, b []byte) ristretto.Point {
 	copy(byts[:], b)
 	c.SetBytes(&byts)
 	return c
-}
-
-func randReader(b []byte) (n int, err error) {
-	return len(b), nil
 }
 
 func fetchInputs(netPrefix byte, db *database.DB, totalAmount int64, key *key.Key) ([]*transactions.Input, int64, error) {

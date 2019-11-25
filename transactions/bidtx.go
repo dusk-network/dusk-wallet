@@ -73,6 +73,10 @@ func (b *Bid) Equals(t Transaction) bool {
 	return true
 }
 
+func (b *Bid) UnlockHeight() uint64 {
+	return b.Lock
+}
+
 func marshalBid(b *bytes.Buffer, bid *Bid) error {
 	if err := marshalTimelock(b, bid.Timelock); err != nil {
 		return err
