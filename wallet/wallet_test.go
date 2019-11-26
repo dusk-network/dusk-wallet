@@ -97,18 +97,19 @@ func TestCheckBlock(t *testing.T) {
 
 	var numTxs = 3 // numTxs to send to Bob
 
-	var blk block.Block
+	blk := block.NewBlock()
+	blk.Header.Height = 0
 	for i := 0; i < numTxs; i++ {
 		tx := generateStandardTx(t, *bobAddr, 20, alice)
 		assert.Nil(t, err)
 		blk.AddTx(tx)
 	}
 
-	count, err := bob.CheckWireBlockReceived(blk)
+	count, err := bob.CheckWireBlockReceived(*blk)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(numTxs), count)
 
-	_, err = alice.CheckWireBlockSpent(blk)
+	_, err = alice.CheckWireBlockSpent(*blk)
 	assert.Nil(t, err)
 }
 
@@ -117,11 +118,12 @@ func TestSpendLockedInputs(t *testing.T) {
 	alice := generateWallet(t, netPrefix, "alice", walletPath)
 	defer os.Remove(walletPath)
 
-	var blk block.Block
+	blk := block.NewBlock()
+	blk.Header.Height = 0
 	tx := generateStakeTx(t, 20, alice, 100000)
 	blk.AddTx(tx)
 
-	_, err := alice.CheckWireBlockReceived(blk)
+	_, err := alice.CheckWireBlockReceived(*blk)
 	assert.Nil(t, err)
 
 	// Attempt to send a Standard tx with this single input we received.

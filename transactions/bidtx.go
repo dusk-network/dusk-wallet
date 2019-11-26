@@ -73,7 +73,7 @@ func (b *Bid) Equals(t Transaction) bool {
 	return true
 }
 
-func (b *Bid) UnlockHeight() uint64 {
+func (b *Bid) LockTime() uint64 {
 	return b.Lock
 }
 
