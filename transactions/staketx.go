@@ -79,7 +79,7 @@ func (s *Stake) Equals(t Transaction) bool {
 	return true
 }
 
-func (s *Stake) UnlockHeight() uint64 {
+func (s *Stake) LockTime() uint64 {
 	return s.Lock
 }
 

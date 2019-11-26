@@ -19,5 +19,5 @@ type Transaction interface {
 	merkletree.Payload
 	Equals(Transaction) bool
 	StandardTx() *Standard
-	UnlockHeight() uint64
+	LockTime() uint64
 }

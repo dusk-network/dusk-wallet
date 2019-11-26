@@ -172,7 +172,7 @@ func (s *Standard) ProveRangeProof() error {
 	return nil
 }
 
-func (s *Standard) UnlockHeight() uint64 {
+func (s *Standard) LockTime() uint64 {
 	return 0
 }
 

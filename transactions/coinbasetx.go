@@ -120,7 +120,7 @@ func (s *Coinbase) Equals(t Transaction) bool {
 	return true
 }
 
-func (s *Coinbase) UnlockHeight() uint64 {
+func (s *Coinbase) LockTime() uint64 {
 	return 0
 }
 
