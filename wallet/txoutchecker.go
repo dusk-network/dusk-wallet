@@ -34,7 +34,7 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 
 			didReceiveFunds = true
 
-			if err := w.writeOutputToDatabase(*output, privView, privSpend, *privKey, tx, i); err != nil {
+			if err := w.writeOutputToDatabase(*output, privView, privSpend, *privKey, tx, i, blk.Header.Height); err != nil {
 				return 0, err
 			}
 
@@ -51,7 +51,7 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 	return totalReceivedCount, nil
 }
 
-func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key.PrivateView, privSpend *key.PrivateSpend, privKey ristretto.Scalar, tx transactions.Transaction, i int) error {
+func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key.PrivateView, privSpend *key.PrivateSpend, privKey ristretto.Scalar, tx transactions.Transaction, i int, blockHeight uint64) error {
 	var amount, mask ristretto.Scalar
 	amount.Set(&output.EncryptedAmount)
 	mask.Set(&output.EncryptedMask)
@@ -61,7 +61,7 @@ func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key
 		mask = transactions.DecryptMask(output.EncryptedMask, tx.StandardTx().R, uint32(i), *privView)
 	}
 
-	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.UnlockHeight())
+	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.LockTime()+blockHeight)
 }
 
 func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ristretto.Scalar) error {
