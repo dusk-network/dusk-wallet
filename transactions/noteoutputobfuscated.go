@@ -1,6 +1,8 @@
 package transactions
 
 import (
+	"math/big"
+
 	ristretto "github.com/bwesterb/go-ristretto"
 	"github.com/dusk-network/dusk-wallet/key"
 )
@@ -11,7 +13,7 @@ type NoteOutputObfuscated struct {
 	Commitments []ristretto.Point
 
 	// Value represents the encrypted output value with PKr
-	Value []byte
+	Value ristretto.Scalar
 
 	// B represents the encrypted blinding factor of the generated commitment.
 	B []byte
@@ -21,21 +23,38 @@ type NoteOutputObfuscated struct {
 	// R := r . G
 	R ristretto.Point
 
-	// PubKey is a one-time pubkey that refers to the owner
-	// of the note.
+	// PubKey is a one-time generated key.
 	//
 	// PrivateSpend := scalarDerive(H(r))
 	// PrivateView := scalarDerive(H(PrivateSpend))
 	// PublicSpend := PrivateSpend . G
 	// PublicView := PrivateView . G
 	// PubKey := { PublicSpend, PublicView }
-	PubKey key.StealthAddress
+	PubKey key.PublicKey
 
 	// Idx refers to the position of the note in the tree.
 	Idx uint64
 }
 
-// Transparent is false for obfuscated notes
-func (no *NoteOutputObfuscated) Transparent() bool {
+// NewNoteOutputObfuscated will create a new utxo phoenix note
+func NewNoteOutputObfuscated(value *big.Int) *NoteOutputObfuscated {
+	keyPair, r, rG := GenerateStealthAddress()
+
+	// TODO Check index
+	var valueScalar ristretto.Scalar
+	valueScalar.SetBigInt(value)
+	encValue := EncryptAmount(valueScalar, r, 0, *(keyPair.PublicKey().PubView))
+
+	// TODO Set Commitments and B
+
+	return &NoteOutputObfuscated{
+		Value:  encValue,
+		R:      rG,
+		PubKey: *keyPair.PublicKey(),
+	}
+}
+
+// IsTransparent is false for obfuscated notes
+func (no *NoteOutputObfuscated) IsTransparent() bool {
 	return false
 }
