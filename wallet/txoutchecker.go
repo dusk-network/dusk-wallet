@@ -61,7 +61,13 @@ func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key
 		mask = transactions.DecryptMask(output.EncryptedMask, tx.StandardTx().R, uint32(i), *privView)
 	}
 
-	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.LockTime()+blockHeight)
+	// Only the first output of a tx is locked, to avoid locking up
+	// a change output.
+	if i == 0 {
+		return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.LockTime()+blockHeight)
+	}
+
+	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, 0)
 }
 
 func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ristretto.Scalar) error {

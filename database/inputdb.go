@@ -36,6 +36,7 @@ func (idb *inputDB) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	idb.unlockHeight = unlockHeight
 
 	return nil
 }
