@@ -67,14 +67,23 @@ func TestUnlockInputs(t *testing.T) {
 	pubKey.Rand()
 	assert.NoError(t, db.PutInput([]byte{0}, pubKey, input.amount, input.mask, input.privKey, input.unlockHeight))
 
-	// Now run UpdateLockedInputs
-	assert.NoError(t, db.UpdateLockedInputs([]byte{0}, 1000))
-
+	// Fetch it and ensure the unlock height is set
 	key := append(inputPrefix, pubKey.Bytes()...)
 	value, err := db.Get(key)
 	assert.NoError(t, err)
 
 	decoded := &inputDB{}
+	decoded.Decode(bytes.NewBuffer(value))
+
+	assert.Equal(t, uint64(1000), decoded.unlockHeight)
+
+	// Now run UpdateLockedInputs
+	assert.NoError(t, db.UpdateLockedInputs([]byte{0}, 1000))
+
+	value, err = db.Get(key)
+	assert.NoError(t, err)
+
+	decoded = &inputDB{}
 	decoded.Decode(bytes.NewBuffer(value))
 
 	assert.Equal(t, uint64(0), decoded.unlockHeight)
