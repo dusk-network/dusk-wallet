@@ -32,7 +32,7 @@ func (idb *inputDB) Decode(r io.Reader) error {
 	idb.privKey.SetBytes(&privKeyBytes)
 
 	var unlockHeight uint64
-	err = binary.Read(r, binary.LittleEndian, unlockHeight)
+	err = binary.Read(r, binary.LittleEndian, &unlockHeight)
 	if err != nil {
 		return err
 	}
