@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dusk-network/dusk-wallet/transactions"
 
@@ -21,6 +22,8 @@ type DB struct {
 var (
 	inputPrefix        = []byte("input")
 	walletHeightPrefix = []byte("syncedHeight")
+	txInPrefix         = []byte("txIn")
+	txOutPrefix        = []byte("txOut")
 
 	writeOptions = &opt.WriteOptions{NoWriteMerge: false, Sync: true}
 )
@@ -35,6 +38,50 @@ func New(path string) (*DB, error) {
 
 func (db *DB) Put(key, value []byte) error {
 	return db.storage.Put(key, value, nil)
+}
+
+func (db *DB) PutTxIn(tx transactions.Transaction) error {
+	// Schema
+	//
+	// key: txInPrefix
+	// value: timestamp(unix) + type + amount
+
+	// 8 (timestamp) + 1 (type) + 8 (amount)
+	value := make([]byte, 17)
+
+	putCommonFields(value, tx)
+
+	return db.Put(txInPrefix, value)
+}
+
+func (db *DB) PutTxOut(tx transactions.Transaction) error {
+	// Schema
+	//
+	// key: txOutPrefix
+	// value: timestamp(unix) + type + amount + address
+
+	// 8 (timestamp) + 1 (type) + 8 (amount)
+	value := make([]byte, 17)
+
+	putCommonFields(value, tx)
+
+	// Address
+	value = append(value, tx.StandardTx().Outputs[0].PubKey.P.Bytes()...)
+
+	return db.Put(txOutPrefix, value)
+}
+
+// Common fields for tx records, whether they are in or out.
+func putCommonFields(value []byte, tx transactions.Transaction) {
+	// Timestamp
+	time := time.Now().Unix()
+	binary.LittleEndian.PutUint64(value[0:8], uint64(time))
+
+	// Type
+	value[8] = byte(tx.Type())
+
+	// Amount
+	binary.LittleEndian.PutUint64(value[9:17], tx.StandardTx().Outputs[0].EncryptedAmount.BigInt().Uint64())
 }
 
 func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, unlockHeight uint64) error {

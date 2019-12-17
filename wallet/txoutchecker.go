@@ -45,6 +45,7 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 
 		if didReceiveFunds {
 			totalReceivedCount++
+			_ = w.db.PutTxIn(tx)
 		}
 	}
 

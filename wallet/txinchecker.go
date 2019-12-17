@@ -33,12 +33,16 @@ func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 	var totalSpentCount uint64
 	txInCheckers := NewTxInChecker(blk.Txs)
 
-	for _, txchecker := range txInCheckers {
+	for i, txchecker := range txInCheckers {
 		spentCount, err := w.removeSpentOutputs(txchecker)
 		if err != nil {
 			return spentCount, err
 		}
 		totalSpentCount += spentCount
+
+		if spentCount > 0 {
+			_ = w.db.PutTxOut(blk.Txs[i])
+		}
 	}
 
 	return totalSpentCount, nil
