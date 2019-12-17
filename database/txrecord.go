@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type txRecord struct {
@@ -36,6 +37,40 @@ func decodeTxRecord(b []byte, t *txRecord) {
 	t.Timestamp = int64(binary.LittleEndian.Uint64(b[0:8]))
 	t.Type = transactions.TxType(b[8])
 	t.Amount = binary.LittleEndian.Uint64(b[9:17])
+}
+
+func (db *DB) FetchTxInRecords() ([]TxInRecord, error) {
+	txInRecords := make([]TxInRecord, 0)
+	iter := db.storage.NewIterator(util.BytesPrefix(txInPrefix), nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		val := iter.Value()
+		txIn := TxInRecord{txRecord{}}
+
+		decodeTxIn(val, &txIn)
+		txInRecords = append(txInRecords, txIn)
+	}
+
+	err := iter.Error()
+	return txInRecords, err
+}
+
+func (db *DB) FetchTxOutRecords() ([]TxOutRecord, error) {
+	txOutRecords := make([]TxOutRecord, 0)
+	iter := db.storage.NewIterator(util.BytesPrefix(txOutPrefix), nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		val := iter.Value()
+		txOut := TxOutRecord{txRecord{}, ""}
+
+		decodeTxOut(val, &txOut)
+		txOutRecords = append(txOutRecords, txOut)
+	}
+
+	err := iter.Error()
+	return txOutRecords, err
 }
 
 func (db *DB) PutTxIn(tx transactions.Transaction) error {
