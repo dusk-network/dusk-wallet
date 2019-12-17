@@ -17,6 +17,7 @@ type txRecord struct {
 
 type TxInRecord struct {
 	txRecord
+	UnlockHeight uint64
 }
 
 type TxOutRecord struct {
@@ -26,6 +27,7 @@ type TxOutRecord struct {
 
 func decodeTxIn(b []byte, t *TxInRecord) {
 	decodeTxRecord(b, &t.txRecord)
+	t.UnlockHeight = binary.LittleEndian.Uint64(b[17:])
 }
 
 func decodeTxOut(b []byte, t *TxOutRecord) {
@@ -46,7 +48,7 @@ func (db *DB) FetchTxInRecords() ([]TxInRecord, error) {
 
 	for iter.Next() {
 		val := iter.Value()
-		txIn := TxInRecord{txRecord{}}
+		txIn := TxInRecord{txRecord{}, 0}
 
 		decodeTxIn(val, &txIn)
 		txInRecords = append(txInRecords, txIn)
@@ -77,12 +79,15 @@ func (db *DB) PutTxIn(tx transactions.Transaction) error {
 	// Schema
 	//
 	// key: txInPrefix
-	// value: timestamp(unix) + type + amount
+	// value: timestamp(unix) + type + amount + unlockheight
 
-	// 8 (timestamp) + 1 (type) + 8 (amount)
-	value := make([]byte, 17)
+	// 8 (timestamp) + 1 (type) + 8 (amount) + 8 (unlockheight)
+	value := make([]byte, 25)
 
 	putCommonFields(value, tx)
+
+	// UnlockHeight
+	binary.LittleEndian.PutUint64(value[17:25], tx.LockTime())
 
 	return db.Put(txInPrefix, value)
 }
