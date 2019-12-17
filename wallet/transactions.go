@@ -1,0 +1,119 @@
+package wallet
+
+import (
+	"math/big"
+
+	ristretto "github.com/bwesterb/go-ristretto"
+	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/syndtr/goleveldb/leveldb"
+)
+
+func (w *Wallet) NewStandardTx(fee int64) (*transactions.Standard, error) {
+	tx, err := transactions.NewStandard(0, w.netPrefix, fee)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (w *Wallet) NewStakeTx(fee int64, lockTime uint64, amount ristretto.Scalar) (*transactions.Stake, error) {
+	edPubBytes := w.consensusKeys.EdPubKeyBytes
+	blsPubBytes := w.consensusKeys.BLSPubKeyBytes
+	tx, err := transactions.NewStake(0, w.netPrefix, fee, lockTime, edPubBytes, blsPubBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send locked stake amount to self
+	walletAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
+	err = tx.AddOutput(*walletAddr, amount)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (w *Wallet) NewBidTx(fee int64, lockTime uint64, amount ristretto.Scalar) (*transactions.Bid, error) {
+	privateSpend, err := w.keyPair.PrivateSpend()
+	privateSpend.Bytes()
+
+	// TODO: index is currently set to be zero.
+	// To avoid any privacy implications, the wallet should increment
+	// the index by how many bidding txs are seen
+	mBytes := generateM(privateSpend.Bytes(), 0)
+	tx, err := transactions.NewBid(0, w.netPrefix, fee, lockTime, mBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send bid amount to self
+	walletAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
+	err = tx.AddOutput(*walletAddr, amount)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+// AddInputs adds up the total outputs and fee then fetches inputs to consolidate this
+func (w *Wallet) AddInputs(tx *transactions.Standard) error {
+	totalAmount := tx.Fee.BigInt().Int64() + tx.TotalSent.BigInt().Int64()
+	inputs, changeAmount, err := w.fetchInputs(w.netPrefix, w.db, totalAmount, w.keyPair)
+	if err != nil {
+		return err
+	}
+	for _, input := range inputs {
+		err := tx.AddInput(input)
+		if err != nil {
+			return err
+		}
+	}
+
+	changeAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
+	if err != nil {
+		return err
+	}
+
+	// Convert int64 to ristretto value
+	var x ristretto.Scalar
+	x.SetBigInt(big.NewInt(changeAmount))
+
+	return tx.AddOutput(*changeAddr, x)
+}
+
+func (w *Wallet) Sign(tx SignableTx) error {
+	// Assuming user has added all of the outputs
+	standardTx := tx.StandardTx()
+
+	// Fetch Inputs
+	err := w.AddInputs(standardTx)
+	if err != nil {
+		return err
+	}
+
+	// Fetch decoys
+	err = standardTx.AddDecoys(numMixins, w.fetchDecoys)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Prove(); err != nil {
+		return err
+	}
+
+	// Remove inputs from the db, to prevent accidental double-spend attempts
+	// when sending transactions quickly after one another.
+	for _, input := range tx.StandardTx().Inputs {
+		pubKey, err := w.db.Get(input.KeyImage.Bytes())
+		if err == leveldb.ErrNotFound {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		w.db.RemoveInput(pubKey, input.KeyImage.Bytes())
+	}
+
+	return nil
+}
