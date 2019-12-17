@@ -6,7 +6,6 @@ import (
 	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
-	wiretx "github.com/dusk-network/dusk-wallet/transactions"
 )
 
 // CheckWireBlockReceived checks if the wire block has transactions for this wallet
@@ -79,17 +78,17 @@ func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ris
 	return w.db.Put(keyImage.Bytes(), output.PubKey.P.Bytes())
 }
 
-func shouldEncryptValues(tx wiretx.Transaction) bool {
+func shouldEncryptValues(tx transactions.Transaction) bool {
 	switch tx.Type() {
-	case wiretx.StandardType:
+	case transactions.StandardType:
 		return true
-	case wiretx.TimelockType:
+	case transactions.TimelockType:
 		return true
-	case wiretx.BidType:
+	case transactions.BidType:
 		return false
-	case wiretx.StakeType:
+	case transactions.StakeType:
 		return false
-	case wiretx.CoinbaseType:
+	case transactions.CoinbaseType:
 		return false
 	default:
 		return true
