@@ -191,6 +191,12 @@ func (w *Wallet) Balance() (uint64, uint64, error) {
 	return unlockedBalance, lockedBalance, nil
 }
 
+// FetchTxHistory will return a slice containing information about all
+// transactions made and received with this wallet.
+func (w *Wallet) FetchTxHistory() ([]database.TxInRecord, error) {
+	return w.db.FetchTxInRecords()
+}
+
 func (w *Wallet) GetSavedHeight() (uint64, error) {
 	return w.db.GetWalletHeight()
 }
