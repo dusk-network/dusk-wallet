@@ -20,9 +20,9 @@ type DB struct {
 }
 
 var (
-	inputPrefix        = []byte("input")
-	walletHeightPrefix = []byte("syncedHeight")
-	txRecordPrefix     = []byte("txRecord")
+	inputPrefix        = []byte{0x00}
+	walletHeightPrefix = []byte{0x01}
+	txRecordPrefix     = []byte{0x02}
 
 	writeOptions = &opt.WriteOptions{NoWriteMerge: false, Sync: true}
 )
@@ -251,7 +251,8 @@ func (db *DB) FetchTxRecords() ([]txrecords.TxRecord, error) {
 	defer iter.Release()
 
 	for iter.Next() {
-		val := iter.Value()
+		// record is the key without the prefix
+		val := iter.Key()[1:]
 		txRecord := txrecords.TxRecord{}
 
 		if err := txrecords.Decode(bytes.NewBuffer(val), &txRecord); err != nil {
@@ -268,17 +269,23 @@ func (db *DB) FetchTxRecords() ([]txrecords.TxRecord, error) {
 func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direction) error {
 	// Schema
 	//
-	// key: txRecordPrefix
-	// value: direction + timestamp(unix) + type + amount + unlockheight + recipient
+	// key: txRecordPrefix + record
+	// value: 0
 	buf := new(bytes.Buffer)
-	txRecord := txrecords.New(tx, direction)
+	height, err := db.GetWalletHeight()
+	if err != nil {
+		return err
+	}
+
+	txRecord := txrecords.New(tx, height, direction)
 	if err := txrecords.Encode(buf, txRecord); err != nil {
 		return err
 	}
 
-	value := make([]byte, 0)
-	value = append(value, txRecordPrefix...)
-	value = append(value, buf.Bytes()...)
+	key := make([]byte, 0)
+	key = append(key, txRecordPrefix...)
+	key = append(key, buf.Bytes()...)
 
-	return db.Put(txRecordPrefix, value)
+	value := make([]byte, 1)
+	return db.Put(key, value)
 }
