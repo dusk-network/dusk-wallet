@@ -15,6 +15,7 @@ func TestEncodeDecodeTxRecord(t *testing.T) {
 	r := &txrecords.TxRecord{
 		Direction:    txrecords.In,
 		Timestamp:    time.Now().Unix(),
+		Height:       500,
 		TxType:       transactions.BidType,
 		Amount:       7172727182793,
 		UnlockHeight: 300000,
@@ -33,6 +34,7 @@ func TestEncodeDecodeTxRecord(t *testing.T) {
 
 	assert.Equal(t, r.Direction, decoded.Direction)
 	assert.Equal(t, r.Timestamp, decoded.Timestamp)
+	assert.Equal(t, r.Height, decoded.Height)
 	assert.Equal(t, r.TxType, decoded.TxType)
 	assert.Equal(t, r.Amount, decoded.Amount)
 	assert.Equal(t, r.UnlockHeight, decoded.UnlockHeight)

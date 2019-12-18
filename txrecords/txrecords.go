@@ -22,19 +22,21 @@ const (
 type TxRecord struct {
 	Direction
 	Timestamp int64
+	Height    uint64
 	transactions.TxType
 	Amount       uint64
 	UnlockHeight uint64
 	Recipient    string
 }
 
-func New(tx transactions.Transaction, direction Direction) *TxRecord {
+func New(tx transactions.Transaction, height uint64, direction Direction) *TxRecord {
 	return &TxRecord{
 		Direction:    direction,
 		Timestamp:    time.Now().Unix(),
+		Height:       height,
 		TxType:       tx.Type(),
 		Amount:       tx.StandardTx().Outputs[0].EncryptedAmount.BigInt().Uint64(),
-		UnlockHeight: tx.LockTime(),
+		UnlockHeight: height + tx.LockTime(),
 		Recipient:    hex.EncodeToString(tx.StandardTx().Outputs[0].PubKey.P.Bytes()),
 	}
 }
@@ -45,6 +47,10 @@ func Encode(b *bytes.Buffer, t *TxRecord) error {
 	}
 
 	if err := binary.Write(b, binary.LittleEndian, t.Timestamp); err != nil {
+		return err
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, t.Height); err != nil {
 		return err
 	}
 
@@ -73,6 +79,10 @@ func Decode(b *bytes.Buffer, t *TxRecord) error {
 	}
 
 	if err := binary.Read(b, binary.LittleEndian, &t.Timestamp); err != nil {
+		return err
+	}
+
+	if err := binary.Read(b, binary.LittleEndian, &t.Height); err != nil {
 		return err
 	}
 
