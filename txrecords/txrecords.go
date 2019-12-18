@@ -2,7 +2,9 @@ package txrecords
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
+	"io/ioutil"
 	"time"
 
 	"github.com/dusk-network/dusk-wallet/transactions"
@@ -38,9 +40,59 @@ func New(tx transactions.Transaction, direction Direction) *TxRecord {
 }
 
 func Encode(b *bytes.Buffer, t *TxRecord) error {
+	if err := binary.Write(b, binary.LittleEndian, t.Direction); err != nil {
+		return err
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, t.Timestamp); err != nil {
+		return err
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, t.TxType); err != nil {
+		return err
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, t.Amount); err != nil {
+		return err
+	}
+
+	if err := binary.Write(b, binary.LittleEndian, t.UnlockHeight); err != nil {
+		return err
+	}
+
+	if _, err := b.Write([]byte(t.Recipient)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func Decode(b *bytes.Buffer, t *TxRecord) error {
+	if err := binary.Read(b, binary.LittleEndian, &t.Direction); err != nil {
+		return err
+	}
+
+	if err := binary.Read(b, binary.LittleEndian, &t.Timestamp); err != nil {
+		return err
+	}
+
+	if err := binary.Read(b, binary.LittleEndian, &t.TxType); err != nil {
+		return err
+	}
+
+	if err := binary.Read(b, binary.LittleEndian, &t.Amount); err != nil {
+		return err
+	}
+
+	if err := binary.Read(b, binary.LittleEndian, &t.UnlockHeight); err != nil {
+		return err
+	}
+
+	recipientBytes, err := ioutil.ReadAll(b)
+	if err != nil {
+		return err
+	}
+
+	t.Recipient = string(recipientBytes)
 	return nil
 }
