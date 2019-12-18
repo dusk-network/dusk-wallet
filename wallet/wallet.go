@@ -8,6 +8,7 @@ import (
 	"github.com/dusk-network/dusk-wallet/database"
 	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/dusk-network/dusk-wallet/txrecords"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -193,8 +194,8 @@ func (w *Wallet) Balance() (uint64, uint64, error) {
 
 // FetchTxHistory will return a slice containing information about all
 // transactions made and received with this wallet.
-func (w *Wallet) FetchTxHistory() ([]database.TxInRecord, error) {
-	return w.db.FetchTxInRecords()
+func (w *Wallet) FetchTxHistory() ([]txrecords.TxRecord, error) {
+	return w.db.FetchTxRecords()
 }
 
 func (w *Wallet) GetSavedHeight() (uint64, error) {

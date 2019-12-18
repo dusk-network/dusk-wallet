@@ -3,6 +3,7 @@ package wallet
 import (
 	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/dusk-network/dusk-wallet/txrecords"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -41,7 +42,7 @@ func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 		totalSpentCount += spentCount
 
 		if spentCount > 0 {
-			_ = w.db.PutTxOut(blk.Txs[i])
+			_ = w.db.PutTxRecord(blk.Txs[i], txrecords.Out)
 		}
 	}
 

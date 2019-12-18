@@ -6,6 +6,7 @@ import (
 	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/dusk-network/dusk-wallet/txrecords"
 )
 
 // CheckWireBlockReceived checks if the wire block has transactions for this wallet
@@ -44,7 +45,7 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 
 		if didReceiveFunds {
 			totalReceivedCount++
-			_ = w.db.PutTxIn(tx)
+			_ = w.db.PutTxRecord(tx, txrecords.In)
 		}
 	}
 
