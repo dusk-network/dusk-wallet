@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/dusk-network/dusk-wallet/txrecords"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -19,8 +20,9 @@ type DB struct {
 }
 
 var (
-	inputPrefix        = []byte("input")
-	walletHeightPrefix = []byte("syncedHeight")
+	inputPrefix        = []byte{0x00}
+	walletHeightPrefix = []byte{0x01}
+	txRecordPrefix     = []byte{0x02}
 
 	writeOptions = &opt.WriteOptions{NoWriteMerge: false, Sync: true}
 )
@@ -241,4 +243,49 @@ func (db *DB) Delete(key []byte) error {
 
 func (db *DB) Close() error {
 	return db.storage.Close()
+}
+
+func (db *DB) FetchTxRecords() ([]txrecords.TxRecord, error) {
+	records := make([]txrecords.TxRecord, 0)
+	iter := db.storage.NewIterator(util.BytesPrefix(txRecordPrefix), nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		// record is the key without the prefix
+		val := iter.Key()[1:]
+		txRecord := txrecords.TxRecord{}
+
+		if err := txrecords.Decode(bytes.NewBuffer(val), &txRecord); err != nil {
+			return nil, err
+		}
+
+		records = append(records, txRecord)
+	}
+
+	err := iter.Error()
+	return records, err
+}
+
+func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direction) error {
+	// Schema
+	//
+	// key: txRecordPrefix + record
+	// value: 0
+	buf := new(bytes.Buffer)
+	height, err := db.GetWalletHeight()
+	if err != nil {
+		return err
+	}
+
+	txRecord := txrecords.New(tx, height, direction)
+	if err := txrecords.Encode(buf, txRecord); err != nil {
+		return err
+	}
+
+	key := make([]byte, 0)
+	key = append(key, txRecordPrefix...)
+	key = append(key, buf.Bytes()...)
+
+	value := make([]byte, 1)
+	return db.Put(key, value)
 }

@@ -1,25 +1,15 @@
 package wallet
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"math/big"
-	"os"
 
 	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/database"
 	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
-	zkproof "github.com/dusk-network/dusk-zkproof"
-	"golang.org/x/crypto/sha3"
+	"github.com/dusk-network/dusk-wallet/txrecords"
 
-	"github.com/bwesterb/go-ristretto"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -127,53 +117,6 @@ func LoadFromFile(netPrefix byte, db *database.DB, fDecoys transactions.FetchDec
 	}, nil
 }
 
-func (w *Wallet) NewStandardTx(fee int64) (*transactions.Standard, error) {
-	tx, err := transactions.NewStandard(0, w.netPrefix, fee)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
-func (w *Wallet) NewStakeTx(fee int64, lockTime uint64, amount ristretto.Scalar) (*transactions.Stake, error) {
-	edPubBytes := w.consensusKeys.EdPubKeyBytes
-	blsPubBytes := w.consensusKeys.BLSPubKeyBytes
-	tx, err := transactions.NewStake(0, w.netPrefix, fee, lockTime, edPubBytes, blsPubBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	// Send locked stake amount to self
-	walletAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
-	err = tx.AddOutput(*walletAddr, amount)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
-func (w *Wallet) NewBidTx(fee int64, lockTime uint64, amount ristretto.Scalar) (*transactions.Bid, error) {
-	privateSpend, err := w.keyPair.PrivateSpend()
-	privateSpend.Bytes()
-
-	// TODO: index is currently set to be zero.
-	// To avoid any privacy implications, the wallet should increment
-	// the index by how many bidding txs are seen
-	mBytes := generateM(privateSpend.Bytes(), 0)
-	tx, err := transactions.NewBid(0, w.netPrefix, fee, lockTime, mBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	// Send bid amount to self
-	walletAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
-	err = tx.AddOutput(*walletAddr, amount)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
 func (w *Wallet) CheckWireBlock(blk block.Block) (uint64, uint64, error) {
 	// Ensure this block is at the height we expect it to be
 	walletHeight, err := w.GetSavedHeight()
@@ -240,69 +183,6 @@ func (w *Wallet) CheckUnconfirmedBalance(txs []transactions.Transaction) (uint64
 	return balance, nil
 }
 
-// AddInputs adds up the total outputs and fee then fetches inputs to consolidate this
-func (w *Wallet) AddInputs(tx *transactions.Standard) error {
-	totalAmount := tx.Fee.BigInt().Int64() + tx.TotalSent.BigInt().Int64()
-	inputs, changeAmount, err := w.fetchInputs(w.netPrefix, w.db, totalAmount, w.keyPair)
-	if err != nil {
-		return err
-	}
-	for _, input := range inputs {
-		err := tx.AddInput(input)
-		if err != nil {
-			return err
-		}
-	}
-
-	changeAddr, err := w.keyPair.PublicKey().PublicAddress(w.netPrefix)
-	if err != nil {
-		return err
-	}
-
-	// Convert int64 to ristretto value
-	var x ristretto.Scalar
-	x.SetBigInt(big.NewInt(changeAmount))
-
-	return tx.AddOutput(*changeAddr, x)
-}
-
-func (w *Wallet) Sign(tx SignableTx) error {
-	// Assuming user has added all of the outputs
-	standardTx := tx.StandardTx()
-
-	// Fetch Inputs
-	err := w.AddInputs(standardTx)
-	if err != nil {
-		return err
-	}
-
-	// Fetch decoys
-	err = standardTx.AddDecoys(numMixins, w.fetchDecoys)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Prove(); err != nil {
-		return err
-	}
-
-	// Remove inputs from the db, to prevent accidental double-spend attempts
-	// when sending transactions quickly after one another.
-	for _, input := range tx.StandardTx().Inputs {
-		pubKey, err := w.db.Get(input.KeyImage.Bytes())
-		if err == leveldb.ErrNotFound {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-
-		w.db.RemoveInput(pubKey, input.KeyImage.Bytes())
-	}
-
-	return nil
-}
-
 func (w *Wallet) Balance() (uint64, uint64, error) {
 	privSpend, err := w.keyPair.PrivateSpend()
 	if err != nil {
@@ -310,6 +190,12 @@ func (w *Wallet) Balance() (uint64, uint64, error) {
 	}
 	unlockedBalance, lockedBalance, err := w.db.FetchBalance(privSpend.Bytes())
 	return unlockedBalance, lockedBalance, nil
+}
+
+// FetchTxHistory will return a slice containing information about all
+// transactions made and received with this wallet.
+func (w *Wallet) FetchTxHistory() ([]txrecords.TxRecord, error) {
+	return w.db.FetchTxRecords()
 }
 
 func (w *Wallet) GetSavedHeight() (uint64, error) {
@@ -343,111 +229,4 @@ func (w *Wallet) PrivateSpend() ([]byte, error) {
 	}
 
 	return privateSpend.Bytes(), nil
-}
-
-// Save saves the seed to a dat file
-func saveSeed(seed []byte, password string, file string) error {
-	// Overwriting a seed file may cause loss of funds
-	if _, err := os.Stat(file); err == nil {
-		return ErrSeedFileExists
-	}
-
-	digest := sha3.Sum256([]byte(password))
-
-	c, err := aes.NewCipher(digest[:])
-	if err != nil {
-		return err
-	}
-
-	gcm, err := cipher.NewGCM(c)
-	if err != nil {
-		return err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(file, gcm.Seal(nonce, nonce, seed, nil), 0777)
-}
-
-//Modified from https://tutorialedge.net/golang/go-encrypt-decrypt-aes-tutorial/
-func fetchSeed(password string, file string) ([]byte, error) {
-
-	digest := sha3.Sum256([]byte(password))
-
-	ciphertext, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := aes.NewCipher(digest[:])
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(c)
-	if err != nil {
-		return nil, err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(ciphertext) < nonceSize {
-		return nil, err
-	}
-
-	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	seed, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return seed, nil
-}
-
-func generateConsensusKeys(seed []byte) (key.ConsensusKeys, error) {
-	// Consensus keys require >80 bytes of seed, so we will hash seed twice and concatenate
-	// both hashes to get 128 bytes
-
-	seedHash := sha3.Sum512(seed)
-	secondSeedHash := sha3.Sum512(seedHash[:])
-
-	consensusSeed := append(seedHash[:], secondSeedHash[:]...)
-
-	return key.NewConsensusKeysFromBytes(consensusSeed)
-}
-
-func generateM(PrivateSpend []byte, index uint32) []byte {
-
-	// To make K deterministic
-	// We will calculate K = PrivateSpend || Index
-	// Index is the number of Bidding transactions that has
-	// been initiated. This information should be available to the wallet
-	// M = H(K)
-
-	numBidTxsSeen := make([]byte, 4)
-	binary.BigEndian.PutUint32(numBidTxsSeen, index)
-
-	KBytes := append(PrivateSpend, numBidTxsSeen...)
-
-	// Encode K as a ristretto Scalar
-	var k ristretto.Scalar
-	k.Derive(KBytes)
-
-	m := zkproof.CalculateM(k)
-	return m.Bytes()
-}
-
-func (w *Wallet) ReconstructK() (ristretto.Scalar, error) {
-	zeroPadding := make([]byte, 4)
-	privSpend, err := w.PrivateSpend()
-	if err != nil {
-		return ristretto.Scalar{}, err
-	}
-
-	kBytes := append(privSpend, zeroPadding...)
-	var k ristretto.Scalar
-	k.Derive(kBytes)
-	return k, nil
 }
