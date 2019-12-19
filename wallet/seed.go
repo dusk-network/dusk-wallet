@@ -64,10 +64,5 @@ func fetchSeed(password string, file string) ([]byte, error) {
 	}
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	seed, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return seed, nil
+	return gcm.Open(nil, nonce, ciphertext, nil)
 }
