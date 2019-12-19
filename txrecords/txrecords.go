@@ -66,11 +66,8 @@ func Encode(b *bytes.Buffer, t *TxRecord) error {
 		return err
 	}
 
-	if _, err := b.Write([]byte(t.Recipient)); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := b.Write([]byte(t.Recipient))
+	return err
 }
 
 func Decode(b *bytes.Buffer, t *TxRecord) error {
