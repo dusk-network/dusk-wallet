@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
 	"github.com/dusk-network/dusk-wallet/txrecords"
 
@@ -266,7 +267,7 @@ func (db *DB) FetchTxRecords() ([]txrecords.TxRecord, error) {
 	return records, err
 }
 
-func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direction) error {
+func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direction, privView *key.PrivateView) error {
 	// Schema
 	//
 	// key: txRecordPrefix + record
@@ -277,7 +278,7 @@ func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direc
 		return err
 	}
 
-	txRecord := txrecords.New(tx, height, direction)
+	txRecord := txrecords.New(tx, height, direction, privView)
 	if err := txrecords.Encode(buf, txRecord); err != nil {
 		return err
 	}

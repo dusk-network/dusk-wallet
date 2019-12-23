@@ -1,6 +1,8 @@
 package transactions
 
-import "github.com/dusk-network/dusk-crypto/merkletree"
+import (
+	"github.com/dusk-network/dusk-crypto/merkletree"
+)
 
 // TypeInfo returns the underlying type of the transaction
 // This allows the caller to type cast to a
@@ -20,4 +22,21 @@ type Transaction interface {
 	Equals(Transaction) bool
 	StandardTx() *Standard
 	LockTime() uint64
+}
+
+func ShouldEncryptValues(tx Transaction) bool {
+	switch tx.Type() {
+	case StandardType:
+		return true
+	case TimelockType:
+		return true
+	case BidType:
+		return false
+	case StakeType:
+		return false
+	case CoinbaseType:
+		return false
+	default:
+		return true
+	}
 }

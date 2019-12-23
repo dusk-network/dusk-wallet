@@ -45,7 +45,7 @@ func (w *Wallet) CheckWireBlockReceived(blk block.Block) (uint64, error) {
 
 		if didReceiveFunds {
 			totalReceivedCount++
-			_ = w.db.PutTxRecord(tx, txrecords.In)
+			_ = w.db.PutTxRecord(tx, txrecords.In, privView)
 		}
 	}
 
@@ -57,7 +57,7 @@ func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key
 	amount.Set(&output.EncryptedAmount)
 	mask.Set(&output.EncryptedMask)
 
-	if shouldEncryptValues(tx) {
+	if transactions.ShouldEncryptValues(tx) {
 		amount = transactions.DecryptAmount(output.EncryptedAmount, tx.StandardTx().R, uint32(i), *privView)
 		mask = transactions.DecryptMask(output.EncryptedMask, tx.StandardTx().R, uint32(i), *privView)
 	}
@@ -77,21 +77,4 @@ func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ris
 	pubKey.ScalarMultBase(&privKey)
 	keyImage := mlsag.CalculateKeyImage(privKey, pubKey)
 	return w.db.Put(keyImage.Bytes(), output.PubKey.P.Bytes())
-}
-
-func shouldEncryptValues(tx transactions.Transaction) bool {
-	switch tx.Type() {
-	case transactions.StandardType:
-		return true
-	case transactions.TimelockType:
-		return true
-	case transactions.BidType:
-		return false
-	case transactions.StakeType:
-		return false
-	case transactions.CoinbaseType:
-		return false
-	default:
-		return true
-	}
 }

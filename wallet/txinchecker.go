@@ -33,6 +33,10 @@ func NewTxInChecker(txs []transactions.Transaction) []TxInChecker {
 func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 	var totalSpentCount uint64
 	txInCheckers := NewTxInChecker(blk.Txs)
+	privView, err := w.keyPair.PrivateView()
+	if err != nil {
+		return 0, err
+	}
 
 	for i, txchecker := range txInCheckers {
 		spentCount, err := w.removeSpentOutputs(txchecker)
@@ -42,7 +46,7 @@ func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 		totalSpentCount += spentCount
 
 		if spentCount > 0 {
-			_ = w.db.PutTxRecord(blk.Txs[i], txrecords.Out)
+			_ = w.db.PutTxRecord(blk.Txs[i], txrecords.Out, privView)
 		}
 	}
 

@@ -169,7 +169,7 @@ func (w *Wallet) CheckUnconfirmedBalance(txs []transactions.Transaction) (uint64
 			}
 
 			var amount uint64
-			if shouldEncryptValues(tx) {
+			if transactions.ShouldEncryptValues(tx) {
 				amountScalar := transactions.DecryptAmount(output.EncryptedAmount, tx.StandardTx().R, uint32(i), *privView)
 				amount = amountScalar.BigInt().Uint64()
 			} else {

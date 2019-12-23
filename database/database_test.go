@@ -108,10 +108,12 @@ func TestPutFetchTxRecord(t *testing.T) {
 
 	// Create some random txs
 	txs := make([]transactions.Transaction, 10)
+	privViews := make([]*key.PrivateView, 10)
 	for i := range txs {
-		tx := randTxForRecord(transactions.TxType(i % 5))
+		tx, privView := randTxForRecord(transactions.TxType(i % 5))
+		privViews[i] = privView
 		txs[i] = tx
-		if err := db.PutTxRecord(tx, txrecords.Direction(i%2)); err != nil {
+		if err := db.PutTxRecord(tx, txrecords.Direction(i%2), privView); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,11 +129,16 @@ func TestPutFetchTxRecord(t *testing.T) {
 	checked := 0
 	for _, record := range records {
 		// Find out which tx this is
-		for _, tx := range txs {
+		for i, tx := range txs {
 			if hex.EncodeToString(tx.StandardTx().Outputs[0].PubKey.P.Bytes()) == record.Recipient {
 				assert.Equal(t, tx.LockTime(), record.UnlockHeight-record.Height)
 				assert.Equal(t, tx.Type(), record.TxType)
-				assert.Equal(t, tx.StandardTx().Outputs[0].EncryptedAmount.BigInt().Uint64(), record.Amount)
+				amount := tx.StandardTx().Outputs[0].EncryptedAmount
+				if transactions.ShouldEncryptValues(tx) {
+					amount = transactions.DecryptAmount(amount, tx.StandardTx().R, 0, *privViews[i])
+				}
+
+				assert.Equal(t, amount.BigInt().Uint64(), record.Amount)
 				checked++
 			}
 		}
@@ -154,7 +161,7 @@ func randInput() *inputDB {
 	return idb
 }
 
-func randTxForRecord(t transactions.TxType) transactions.Transaction {
+func randTxForRecord(t transactions.TxType) (transactions.Transaction, *key.PrivateView) {
 	var tx transactions.Transaction
 	switch t {
 	case transactions.StandardType:
@@ -174,6 +181,11 @@ func randTxForRecord(t transactions.TxType) transactions.Transaction {
 	seed := make([]byte, 64)
 	rand.Read(seed)
 	keyPair := key.NewKeyPair(seed)
+	privView, err := keyPair.PrivateView()
+	if err != nil {
+		panic(err)
+	}
+
 	addr, err := keyPair.PublicKey().PublicAddress(1)
 	if err != nil {
 		panic(err)
@@ -181,12 +193,12 @@ func randTxForRecord(t transactions.TxType) transactions.Transaction {
 
 	if tx.Type() == transactions.CoinbaseType {
 		tx.(*transactions.Coinbase).AddReward(*keyPair.PublicKey(), amount)
-		return tx
+		return tx, privView
 	}
 
 	if err := tx.StandardTx().AddOutput(*addr, amount); err != nil {
 		panic(err)
 	}
 
-	return tx
+	return tx, privView
 }

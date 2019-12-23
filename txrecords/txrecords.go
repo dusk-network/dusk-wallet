@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/dusk-network/dusk-wallet/key"
 	"github.com/dusk-network/dusk-wallet/transactions"
 )
 
@@ -29,8 +30,8 @@ type TxRecord struct {
 	Recipient    string
 }
 
-func New(tx transactions.Transaction, height uint64, direction Direction) *TxRecord {
-	return &TxRecord{
+func New(tx transactions.Transaction, height uint64, direction Direction, privView *key.PrivateView) *TxRecord {
+	t := &TxRecord{
 		Direction:    direction,
 		Timestamp:    time.Now().Unix(),
 		Height:       height,
@@ -39,6 +40,12 @@ func New(tx transactions.Transaction, height uint64, direction Direction) *TxRec
 		UnlockHeight: height + tx.LockTime(),
 		Recipient:    hex.EncodeToString(tx.StandardTx().Outputs[0].PubKey.P.Bytes()),
 	}
+
+	if transactions.ShouldEncryptValues(tx) {
+		amountScalar := transactions.DecryptAmount(tx.StandardTx().Outputs[0].EncryptedAmount, tx.StandardTx().R, 0, *privView)
+		t.Amount = amountScalar.BigInt().Uint64()
+	}
+	return t
 }
 
 func Encode(b *bytes.Buffer, t *TxRecord) error {
