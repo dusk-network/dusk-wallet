@@ -186,7 +186,10 @@ func (db *DB) UpdateLockedInputs(decryptionKey []byte, height uint64) error {
 	for iter.Next() {
 		val := iter.Value()
 
-		decryptedBytes, err := decrypt(val, decryptionKey)
+		encryptedBytes := make([]byte, len(val))
+		copy(encryptedBytes[:], val)
+
+		decryptedBytes, err := decrypt(encryptedBytes, decryptionKey)
 		if err != nil {
 			return err
 		}
@@ -254,9 +257,13 @@ func (db *DB) FetchTxRecords() ([]txrecords.TxRecord, error) {
 	for iter.Next() {
 		// record is the key without the prefix
 		val := iter.Key()[1:]
+
+		bs := make([]byte, len(val))
+		copy(bs[:], val)
+
 		txRecord := txrecords.TxRecord{}
 
-		if err := txrecords.Decode(bytes.NewBuffer(val), &txRecord); err != nil {
+		if err := txrecords.Decode(bytes.NewBuffer(bs), &txRecord); err != nil {
 			return nil, err
 		}
 
