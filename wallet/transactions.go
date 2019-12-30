@@ -104,7 +104,7 @@ func (w *Wallet) Sign(tx SignableTx) error {
 	// Remove inputs from the db, to prevent accidental double-spend attempts
 	// when sending transactions quickly after one another.
 	for _, input := range tx.StandardTx().Inputs {
-		pubKey, err := w.db.Get(input.KeyImage.Bytes())
+		pubKey, err := w.db.GetPubKey(input.KeyImage.Bytes())
 		if err == leveldb.ErrNotFound {
 			continue
 		}

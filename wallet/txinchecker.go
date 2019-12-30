@@ -59,7 +59,7 @@ func (w *Wallet) CheckWireBlockSpent(blk block.Block) (uint64, error) {
 func (w *Wallet) removeSpentOutputs(txChecker TxInChecker) (uint64, error) {
 	var didSpendFunds uint64
 	for _, keyImage := range txChecker.keyImages {
-		pubKey, err := w.db.Get(keyImage)
+		pubKey, err := w.db.GetPubKey(keyImage)
 		if err == leveldb.ErrNotFound {
 			continue
 		}

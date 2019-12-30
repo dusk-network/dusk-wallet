@@ -76,5 +76,5 @@ func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ris
 	var pubKey ristretto.Point
 	pubKey.ScalarMultBase(&privKey)
 	keyImage := mlsag.CalculateKeyImage(privKey, pubKey)
-	return w.db.Put(keyImage.Bytes(), output.PubKey.P.Bytes())
+	return w.db.PutKeyImage(keyImage.Bytes(), output.PubKey.P.Bytes())
 }

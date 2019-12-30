@@ -24,6 +24,7 @@ var (
 	inputPrefix        = []byte{0x00}
 	walletHeightPrefix = []byte{0x01}
 	txRecordPrefix     = []byte{0x02}
+	keyImagePrefix     = []byte{0x03}
 
 	writeOptions = &opt.WriteOptions{NoWriteMerge: false, Sync: true}
 )
@@ -65,11 +66,12 @@ func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mas
 }
 
 func (db *DB) RemoveInput(pubkey []byte, keyImage []byte) error {
-	key := append(inputPrefix, pubkey...)
+	inputKey := append(inputPrefix, pubkey...)
+	keyImageKey := append(keyImagePrefix, keyImage...)
 
 	b := new(leveldb.Batch)
-	b.Delete(key)
-	b.Delete(keyImage)
+	b.Delete(inputKey)
+	b.Delete(keyImageKey)
 
 	return db.storage.Write(b, writeOptions)
 }
@@ -296,4 +298,14 @@ func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direc
 
 	value := make([]byte, 1)
 	return db.Put(key, value)
+}
+
+func (db *DB) PutKeyImage(keyImage []byte, pubKey []byte) error {
+	key := append(keyImagePrefix, keyImage...)
+	return db.Put(key, pubKey)
+}
+
+func (db *DB) GetPubKey(keyImage []byte) ([]byte, error) {
+	key := append(keyImagePrefix, keyImage...)
+	return db.Get(key)
 }
