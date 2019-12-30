@@ -300,9 +300,9 @@ func (db *DB) PutTxRecord(tx transactions.Transaction, direction txrecords.Direc
 	return db.Put(key, value)
 }
 
-func (db *DB) PutKeyImage(keyImage []byte, pubKey []byte) error {
+func (db *DB) PutKeyImage(keyImage []byte, outputKey []byte) error {
 	key := append(keyImagePrefix, keyImage...)
-	return db.Put(key, pubKey)
+	return db.Put(key, outputKey)
 }
 
 func (db *DB) GetPubKey(keyImage []byte) ([]byte, error) {
