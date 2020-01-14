@@ -3,6 +3,7 @@ package wallet
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/dusk-network/dusk-wallet/block"
 	"github.com/dusk-network/dusk-wallet/database"
@@ -44,12 +45,27 @@ type SignableTx interface {
 
 func New(Read func(buf []byte) (n int, err error), netPrefix byte, db *database.DB, fDecoys transactions.FetchDecoys, fInputs FetchInputs, password string, file string) (*Wallet, error) {
 
-	// random seed
-	seed := make([]byte, 64)
-	_, err := Read(seed)
-	if err != nil {
-		return nil, err
+	var seed []byte
+	for {
+		// random seed
+		seed = make([]byte, 64)
+		_, err := Read(seed)
+		if err != nil {
+			return nil, err
+		}
+
+		// Ensure the seed can be used for generating a BLS keypair.
+		_, err = generateConsensusKeys(seed)
+		if err == nil {
+			break
+		}
+
+		if err != io.EOF {
+			return nil, err
+		}
+		// If not, we retry.
 	}
+
 	return LoadFromSeed(seed, netPrefix, db, fDecoys, fInputs, password, file)
 }
 

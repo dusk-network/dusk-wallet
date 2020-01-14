@@ -169,6 +169,21 @@ func TestCheckUnconfirmedBalance(t *testing.T) {
 	assert.Equal(t, uint64(int64(numTxs)*amount), balance)
 }
 
+func TestCatchEOF(t *testing.T) {
+	netPrefix := byte(1)
+
+	db, err := database.New(dbPath)
+	assert.Nil(t, err)
+	defer os.RemoveAll(dbPath)
+
+	// Generate 1000 new wallets
+	for i := 0; i < 1000; i++ {
+		_, err = New(rand.Read, netPrefix, db, GenerateDecoys, GenerateInputs, "pass", walletPath)
+		assert.Nil(t, err)
+		os.Remove(walletPath)
+	}
+}
+
 func generateWallet(t *testing.T, netPrefix byte, path string, wPath string) *Wallet {
 	db, err := database.New(path)
 	assert.Nil(t, err)
