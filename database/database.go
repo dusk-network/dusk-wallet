@@ -309,3 +309,15 @@ func (db *DB) GetPubKey(keyImage []byte) ([]byte, error) {
 	key := append(keyImagePrefix, keyImage...)
 	return db.Get(key)
 }
+
+// Clear all information from the database.
+func (db *DB) Clear() error {
+	iter := db.storage.NewIterator(nil, nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		db.Delete(iter.Key())
+	}
+
+	return iter.Error()
+}

@@ -246,3 +246,8 @@ func (w *Wallet) PrivateSpend() ([]byte, error) {
 
 	return privateSpend.Bytes(), nil
 }
+
+// ClearDatabase will remove all info from the database.
+func (w *Wallet) ClearDatabase() error {
+	return w.db.Clear()
+}
