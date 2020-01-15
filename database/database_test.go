@@ -147,6 +147,35 @@ func TestPutFetchTxRecord(t *testing.T) {
 	assert.Equal(t, len(txs), checked)
 }
 
+func TestClear(t *testing.T) {
+	path := "mainnet"
+
+	// New
+	db, err := New(path)
+	assert.Nil(t, err)
+
+	// Make sure to delete this dir after test
+	defer os.RemoveAll(path)
+
+	db.UpdateWalletHeight(20)
+
+	// Put
+	key := []byte("hello")
+	value := []byte("world")
+	err = db.Put(key, value)
+	assert.NoError(t, err)
+
+	// Empty out database
+	assert.NoError(t, db.Clear())
+
+	// Info should now be gone entirely
+	_, err = db.GetWalletHeight()
+	assert.Error(t, err)
+
+	_, err = db.Get([]byte("hello"))
+	assert.Error(t, err)
+}
+
 func randInput() *inputDB {
 	var amount, mask, privKey ristretto.Scalar
 	amount.Rand()
