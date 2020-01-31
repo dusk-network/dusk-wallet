@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/dusk-network/dusk-crypto/hash"
-	"github.com/dusk-network/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/v2/key"
 
 	"github.com/bwesterb/go-ristretto"
 )

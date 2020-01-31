@@ -1,9 +1,9 @@
 package wallet
 
 import (
-	"github.com/dusk-network/dusk-wallet/block"
-	"github.com/dusk-network/dusk-wallet/transactions"
-	"github.com/dusk-network/dusk-wallet/txrecords"
+	"github.com/dusk-network/dusk-wallet/v2/block"
+	"github.com/dusk-network/dusk-wallet/v2/transactions"
+	"github.com/dusk-network/dusk-wallet/v2/txrecords"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 
 	ristretto "github.com/bwesterb/go-ristretto"
-	"github.com/dusk-network/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/v2/key"
 	zkproof "github.com/dusk-network/dusk-zkproof"
 	"golang.org/x/crypto/sha3"
 )

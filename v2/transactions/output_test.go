@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/dusk-network/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/v2/key"
 
 	"github.com/bwesterb/go-ristretto"
 	"github.com/stretchr/testify/assert"

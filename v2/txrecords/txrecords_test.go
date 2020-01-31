@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dusk-network/dusk-wallet/transactions"
-	"github.com/dusk-network/dusk-wallet/txrecords"
+	"github.com/dusk-network/dusk-wallet/v2/transactions"
+	"github.com/dusk-network/dusk-wallet/v2/txrecords"
 	"gotest.tools/assert"
 )
 

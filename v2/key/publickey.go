@@ -8,7 +8,7 @@ import (
 
 	ristretto "github.com/bwesterb/go-ristretto"
 	crypto "github.com/dusk-network/dusk-crypto/hash"
-	"github.com/dusk-network/dusk-wallet/base58"
+	"github.com/dusk-network/dusk-wallet/v2/base58"
 )
 
 // PublicKey represents a pair of PublicSpend and PublicView keys

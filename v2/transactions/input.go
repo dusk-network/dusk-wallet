@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/dusk-network/dusk-crypto/mlsag"
-	"github.com/dusk-network/dusk-wallet/key"
+	"github.com/dusk-network/dusk-wallet/v2/key"
 
 	"github.com/bwesterb/go-ristretto"
 )

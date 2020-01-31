@@ -2,7 +2,7 @@ package block
 
 import (
 	"github.com/dusk-network/dusk-crypto/merkletree"
-	"github.com/dusk-network/dusk-wallet/transactions"
+	"github.com/dusk-network/dusk-wallet/v2/transactions"
 )
 
 // Block defines a block on the Dusk blockchain.
