@@ -24,8 +24,7 @@ func (b *Block) SetPrevBlock(prevHeader *Header) {
 }
 
 // CalculateRoot will calculate and return the block merkle root hash.
-func (b *Block) SetRoot() ([]byte, error) {
-
+func (b *Block) CalculateRoot() ([]byte, error) {
 	// convert Transaction interface to Payload interface
 	var txs []merkletree.Payload
 	for _, tx := range b.Txs {
