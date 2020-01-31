@@ -1,4 +1,4 @@
-module github.com/dusk-network/dusk-wallet
+module github.com/dusk-network/dusk-wallet/v2
 
 require (
 	github.com/bwesterb/go-ristretto v1.1.0
