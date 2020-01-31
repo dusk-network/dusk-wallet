@@ -1,8 +1,8 @@
 package block
 
 import (
-	"github.com/dusk-network/dusk-wallet/transactions"
 	"github.com/dusk-network/dusk-crypto/merkletree"
+	"github.com/dusk-network/dusk-wallet/transactions"
 )
 
 // Block defines a block on the Dusk blockchain.
@@ -23,8 +23,8 @@ func (b *Block) SetPrevBlock(prevHeader *Header) {
 	b.Header.PrevBlockHash = prevHeader.Hash
 }
 
-// SetRoot will set the block merkle root hash.
-func (b *Block) SetRoot() error {
+// CalculateRoot will calculate and return the block merkle root hash.
+func (b *Block) SetRoot() ([]byte, error) {
 
 	// convert Transaction interface to Payload interface
 	var txs []merkletree.Payload
@@ -34,11 +34,10 @@ func (b *Block) SetRoot() error {
 
 	tree, err := merkletree.NewTree(txs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	b.Header.TxRoot = tree.MerkleRoot
-	return nil
+	return tree.MerkleRoot, nil
 }
 
 // AddTx will add a transaction to the block.
@@ -52,9 +51,9 @@ func (b *Block) Clear() {
 	b.Txs = nil
 }
 
-// SetHash will set the block hash.
-func (b *Block) SetHash() error {
-	return b.Header.SetHash()
+// CalculateHash will calculate the block hash.
+func (b *Block) CalculateHash() ([]byte, error) {
+	return b.Header.CalculateHash()
 }
 
 // Equals returns true if two blocks are equal

@@ -34,21 +34,15 @@ func NewHeader() *Header {
 	}
 }
 
-// SetHash will set this block header's hash by encoding all the relevant
+// CalculateHash will calculate and return this block header's hash by encoding all the relevant
 // fields and then hashing the result.
-func (b *Header) SetHash() error {
+func (b *Header) CalculateHash() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := marshalHashable(buf, b); err != nil {
-		return err
+		return nil, err
 	}
 
-	h, err := hash.Sha3256(buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	b.Hash = h
-	return nil
+	return hash.Sha3256(buf.Bytes())
 }
 
 // Equals returns true if headers are equal
