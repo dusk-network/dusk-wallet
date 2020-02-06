@@ -26,9 +26,13 @@ func (out Outputs) Equals(other Outputs) bool {
 		return false
 	}
 
-	for i := range out {
-		firstOutput := out[i]
-		secondOutput := other[i]
+	outs := make(Outputs, len(out)*2)
+	copy(outs, out)
+	copy(outs[len(out):], other)
+
+	for i := 0; i < len(out); i++ {
+		firstOutput := outs[i]
+		secondOutput := outs[len(out)+i]
 		if !firstOutput.Equals(secondOutput) {
 			return false
 		}

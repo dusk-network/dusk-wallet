@@ -24,9 +24,13 @@ func (in Inputs) Equals(other Inputs) bool {
 		return false
 	}
 
-	for i := range in {
-		firstInput := in[i]
-		secondInput := other[i]
+	ins := make(Inputs, len(in)*2)
+	copy(ins, in)
+	copy(ins[len(in):], other)
+
+	for i := 0; i < len(in); i++ {
+		firstInput := ins[i]
+		secondInput := ins[len(in)+i]
 		if !firstInput.Equals(secondInput) {
 			return false
 		}
