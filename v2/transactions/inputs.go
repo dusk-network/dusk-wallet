@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"bytes"
+	"sort"
 )
 
 // Inputs is a slice of pointers to a set of `input`'s
@@ -24,13 +25,15 @@ func (in Inputs) Equals(other Inputs) bool {
 		return false
 	}
 
-	ins := make(Inputs, len(in)*2)
-	copy(ins, in)
-	copy(ins[len(in):], other)
+	whole := make(Inputs, len(in)*2)
+	copy(whole, in)
+	copy(whole[len(in):], other)
 
-	for i := 0; i < len(in); i++ {
-		firstInput := ins[i]
-		secondInput := ins[len(in)+i]
+	sort.Sort(whole)
+
+	for i := 0; i < len(whole); i += 2 {
+		firstInput := whole[i]
+		secondInput := whole[i+1]
 		if !firstInput.Equals(secondInput) {
 			return false
 		}

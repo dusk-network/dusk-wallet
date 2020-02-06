@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"bytes"
+	"sort"
 )
 
 // Nitpick: The sort interface for input and output are similar.
@@ -26,13 +27,15 @@ func (out Outputs) Equals(other Outputs) bool {
 		return false
 	}
 
-	outs := make(Outputs, len(out)*2)
-	copy(outs, out)
-	copy(outs[len(out):], other)
+	whole := make(Outputs, len(out)*2)
+	copy(whole, out)
+	copy(whole[len(out):], other)
 
-	for i := 0; i < len(out); i++ {
-		firstOutput := outs[i]
-		secondOutput := outs[len(out)+i]
+	sort.Sort(whole)
+
+	for i := 0; i < len(whole); i += 2 {
+		firstOutput := whole[i]
+		secondOutput := whole[i+1]
 		if !firstOutput.Equals(secondOutput) {
 			return false
 		}
