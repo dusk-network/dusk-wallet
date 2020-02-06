@@ -2,7 +2,6 @@ package transactions
 
 import (
 	"bytes"
-	"sort"
 )
 
 // Nitpick: The sort interface for input and output are similar.
@@ -23,10 +22,6 @@ func (out Outputs) Swap(i, j int) { out[i], out[j] = out[j], out[i] }
 
 // Equals returns true, if two slices of Outputs are the same
 func (out Outputs) Equals(other Outputs) bool {
-	// Sort both sets incase they are out of order
-	sort.Sort(out)
-	sort.Sort(other)
-
 	if len(out) != len(other) {
 		return false
 	}

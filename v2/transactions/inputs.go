@@ -2,7 +2,6 @@ package transactions
 
 import (
 	"bytes"
-	"sort"
 )
 
 // Inputs is a slice of pointers to a set of `input`'s
@@ -21,10 +20,6 @@ func (in Inputs) Swap(i, j int) { in[i], in[j] = in[j], in[i] }
 
 // Equals returns true, if two slices of inputs are the same
 func (in Inputs) Equals(other Inputs) bool {
-	// Sort both sets incase they are out of order
-	sort.Sort(in)
-	sort.Sort(other)
-
 	if len(in) != len(other) {
 		return false
 	}
