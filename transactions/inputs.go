@@ -21,17 +21,19 @@ func (in Inputs) Swap(i, j int) { in[i], in[j] = in[j], in[i] }
 
 // Equals returns true, if two slices of inputs are the same
 func (in Inputs) Equals(other Inputs) bool {
-	// Sort both sets incase they are out of order
-	sort.Sort(in)
-	sort.Sort(other)
-
 	if len(in) != len(other) {
 		return false
 	}
 
-	for i := range in {
-		firstInput := in[i]
-		secondInput := other[i]
+	whole := make(Inputs, len(in)*2)
+	copy(whole, in)
+	copy(whole[len(in):], other)
+
+	sort.Sort(whole)
+
+	for i := 0; i < len(whole); i += 2 {
+		firstInput := whole[i]
+		secondInput := whole[i+1]
 		if !firstInput.Equals(secondInput) {
 			return false
 		}

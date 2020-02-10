@@ -23,17 +23,19 @@ func (out Outputs) Swap(i, j int) { out[i], out[j] = out[j], out[i] }
 
 // Equals returns true, if two slices of Outputs are the same
 func (out Outputs) Equals(other Outputs) bool {
-	// Sort both sets incase they are out of order
-	sort.Sort(out)
-	sort.Sort(other)
-
 	if len(out) != len(other) {
 		return false
 	}
 
-	for i := range out {
-		firstOutput := out[i]
-		secondOutput := other[i]
+	whole := make(Outputs, len(out)*2)
+	copy(whole, out)
+	copy(whole[len(out):], other)
+
+	sort.Sort(whole)
+
+	for i := 0; i < len(whole); i += 2 {
+		firstOutput := whole[i]
+		secondOutput := whole[i+1]
 		if !firstOutput.Equals(secondOutput) {
 			return false
 		}
