@@ -26,10 +26,6 @@ func NewBid(ver uint8, netPrefix byte, fee int64, lock uint64, M []byte) (*Bid, 
 }
 
 func (b *Bid) CalculateHash() ([]byte, error) {
-	if len(b.TxID) != 0 {
-		return b.TxID, nil
-	}
-
 	buf := new(bytes.Buffer)
 	if err := marshalBid(buf, b); err != nil {
 		return nil, err
@@ -40,7 +36,6 @@ func (b *Bid) CalculateHash() ([]byte, error) {
 		return nil, err
 	}
 
-	b.TxID = txid
 	return txid, nil
 }
 

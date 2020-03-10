@@ -33,10 +33,6 @@ func NewTimelock(ver uint8, netPrefix byte, fee int64, lock uint64) (*Timelock, 
 }
 
 func (tl *Timelock) CalculateHash() ([]byte, error) {
-	if len(tl.TxID) != 0 {
-		return tl.TxID, nil
-	}
-
 	buf := new(bytes.Buffer)
 	if err := marshalTimelock(buf, tl); err != nil {
 		return nil, err
@@ -47,7 +43,6 @@ func (tl *Timelock) CalculateHash() ([]byte, error) {
 		return nil, err
 	}
 
-	tl.TxID = txid
 	return txid, nil
 }
 
