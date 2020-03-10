@@ -66,10 +66,6 @@ func (s *Coinbase) SetTxPubKey(r ristretto.Scalar) {
 }
 
 func (s *Coinbase) CalculateHash() ([]byte, error) {
-	if len(s.TxID) != 0 {
-		return s.TxID, nil
-	}
-
 	buf := new(bytes.Buffer)
 	if err := marshalCoinbase(buf, s); err != nil {
 		return nil, err
@@ -80,7 +76,6 @@ func (s *Coinbase) CalculateHash() ([]byte, error) {
 		return nil, err
 	}
 
-	s.TxID = txid
 	return txid, nil
 }
 

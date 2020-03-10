@@ -28,10 +28,6 @@ func NewStake(ver uint8, netPrefix byte, fee int64, lock uint64, pubKeyEd, pubKe
 }
 
 func (s *Stake) CalculateHash() ([]byte, error) {
-	if len(s.TxID) != 0 {
-		return s.TxID, nil
-	}
-
 	buf := new(bytes.Buffer)
 	if err := marshalStake(buf, s); err != nil {
 		return nil, err
@@ -42,7 +38,6 @@ func (s *Stake) CalculateHash() ([]byte, error) {
 		return nil, err
 	}
 
-	s.TxID = txid
 	return txid, nil
 }
 
