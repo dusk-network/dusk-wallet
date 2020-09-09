@@ -141,7 +141,7 @@ func (w *Wallet) CheckWireBlock(blk block.Block) (uint64, uint64, error) {
 	}
 
 	if blk.Header.Height != walletHeight {
-		return 0, 0, errors.New("last seen block does not precede provided block")
+		return 0, 0, fmt.Errorf("mismatch between block height and wallet height\nblock height: %v - wallet height: %v\n", blk.Header.Height, walletHeight)
 	}
 
 	spentCount, err := w.CheckWireBlockSpent(blk)
