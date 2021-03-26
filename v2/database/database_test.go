@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"math/rand"
 	"os"
@@ -70,10 +71,14 @@ func TestUnlockInputs(t *testing.T) {
 	// Put it in the DB
 	var pubKey ristretto.Point
 	pubKey.Rand()
-	assert.NoError(t, db.PutInput([]byte{0}, pubKey, input.amount, input.mask, input.privKey, input.unlockHeight))
+	r := rand.Uint64()
+	assert.NoError(t, db.PutInput([]byte{0}, pubKey, input.amount, input.mask, input.privKey, input.unlockHeight, r))
 
 	// Fetch it and ensure the unlock height is set
 	key := append(inputPrefix, pubKey.Bytes()...)
+	bs := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bs, r)
+	key = append(key, bs...)
 	value, err := db.Get(key)
 	assert.NoError(t, err)
 

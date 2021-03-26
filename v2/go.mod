@@ -3,6 +3,7 @@ module github.com/dusk-network/dusk-wallet/v2
 require (
 	github.com/bwesterb/go-ristretto v1.1.0
 	github.com/dusk-network/dusk-crypto v0.1.0
+	github.com/dusk-network/dusk-wallet v1.2.0 // indirect
 	github.com/dusk-network/dusk-zkproof v0.0.0-20190727103229-8b0c008561ee
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect

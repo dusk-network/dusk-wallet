@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"math/rand"
+
 	"github.com/bwesterb/go-ristretto"
 	"github.com/dusk-network/dusk-crypto/mlsag"
 	"github.com/dusk-network/dusk-wallet/v2/block"
@@ -65,10 +67,10 @@ func (w *Wallet) writeOutputToDatabase(output transactions.Output, privView *key
 	// Only the first output of a tx is locked, to avoid locking up
 	// a change output.
 	if i == 0 {
-		return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.LockTime()+blockHeight)
+		return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, tx.LockTime()+blockHeight, rand.Uint64())
 	}
 
-	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, 0)
+	return w.db.PutInput(privSpend.Bytes(), output.PubKey.P, amount, mask, privKey, 0, rand.Uint64())
 }
 
 func (w *Wallet) writeKeyImageToDatabase(output transactions.Output, privKey ristretto.Scalar) error {
