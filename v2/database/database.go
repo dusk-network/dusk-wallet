@@ -41,7 +41,7 @@ func (db *DB) Put(key, value []byte) error {
 	return db.storage.Put(key, value, nil)
 }
 
-func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, unlockHeight uint64) error {
+func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mask, privKey ristretto.Scalar, unlockHeight uint64, nonce uint64) error {
 
 	buf := &bytes.Buffer{}
 	idb := &inputDB{
@@ -61,6 +61,9 @@ func (db *DB) PutInput(encryptionKey []byte, pubkey ristretto.Point, amount, mas
 	}
 
 	key := append(inputPrefix, pubkey.Bytes()...)
+	bs := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bs, nonce)
+	key = append(key, bs...)
 
 	return db.Put(key, encryptedBytes)
 }
