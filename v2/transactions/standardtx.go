@@ -10,6 +10,8 @@ import (
 	"github.com/dusk-network/dusk-crypto/hash"
 	"github.com/dusk-network/dusk-crypto/mlsag"
 	"github.com/dusk-network/dusk-crypto/rangeproof"
+	"github.com/dusk-network/dusk-crypto/rangeproof/innerproduct"
+	"github.com/dusk-network/dusk-crypto/rangeproof/pedersen"
 	"github.com/dusk-network/dusk-wallet/v2/key"
 
 	"github.com/bwesterb/go-ristretto"
@@ -74,6 +76,27 @@ func NewStandard(ver uint8, netPrefix byte, fee int64) (*Standard, error) {
 	var r ristretto.Scalar
 	r.Rand()
 	tx.setTxPubKey(r)
+
+	var p ristretto.Point
+	p.Rand()
+
+	// Initialize an empty RangeProof
+	innerProduct := innerproduct.Proof{
+		A: r,
+		B: r,
+		L: make([]ristretto.Point, 0),
+		R: make([]ristretto.Point, 0),
+	}
+
+	tx.RangeProof = rangeproof.Proof{
+		A:        p,
+		S:        p,
+		T1:       p,
+		T2:       p,
+		Blinders: make([]ristretto.Scalar, 0),
+		V:        make([]pedersen.Commitment, 0),
+		IPProof:  &innerProduct,
+	}
 
 	// Set fee
 	err := tx.setTxFee(fee)
@@ -145,30 +168,18 @@ func (s *Standard) ProveRangeProof() error {
 		return nil
 	}
 
-	// Collect all amounts from outputs
-	amounts := make([]ristretto.Scalar, 0, lenOutputs)
-	for i := 0; i < lenOutputs; i++ {
-		amounts = append(amounts, s.Outputs[i].amount)
-	}
-
-	// Create range proof
-	proof, err := rangeproof.Prove(amounts, false)
-	if err != nil {
-		return err
-	}
-
-	// XXX: This is not "!=" because the rangeproof will pad when the amount of values does not equal 2^n
-	if len(proof.V) < len(amounts) {
-		return errors.New("rangeproof did not create proof for all amounts")
-	}
-	s.RangeProof = proof
-
 	// Move commitment values to their respective outputs
 	// along with their blinding factors
 	for i := 0; i < lenOutputs; i++ {
-		s.Outputs[i].Commitment = proof.V[i].Value
-		s.Outputs[i].mask = proof.V[i].BlindingFactor
+		var p ristretto.Point
+		p.Rand()
+		s.Outputs[i].Commitment = p
+
+		var r ristretto.Scalar
+		r.Rand()
+		s.Outputs[i].mask = r
 	}
+
 	return nil
 }
 
